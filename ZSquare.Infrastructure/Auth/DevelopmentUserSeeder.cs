@@ -1,0 +1,61 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using ZSquare.Application;
+using ZSquare.Application.Auth;
+using ZSquare.Domain;
+
+namespace ZSquare.Infrastructure.Auth;
+
+public sealed class DevelopmentUserSeeder(
+    AppDbContext db,
+    IConfiguration configuration,
+    IUserPasswordHasher passwordHasher,
+    ILogger<DevelopmentUserSeeder> logger)
+{
+    private static readonly (string Role, string Name, string Email, string PasswordKey)[] DevelopmentUsers =
+    [
+        (Roles.Admin, "Z SQUARE Admin", "admin@shopease.local", "Auth:SeedPasswords:Admin"),
+        (Roles.Manager, "Z SQUARE Manager", "manager@shopease.local", "Auth:SeedPasswords:Manager"),
+        (Roles.Customer, "Z SQUARE Customer", "customer@shopease.local", "Auth:SeedPasswords:Customer")
+    ];
+
+    public async Task SeedAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await db.Database.CanConnectAsync(cancellationToken) ||
+            !(await db.Database.GetAppliedMigrationsAsync(cancellationToken)).Any())
+        {
+            logger.LogInformation("Development user seeding skipped because the database has no applied migration.");
+            return;
+        }
+
+        var roles = await db.Roles.ToDictionaryAsync(role => role.Name, cancellationToken);
+        foreach (var (roleName, fullName, email, passwordKey) in DevelopmentUsers)
+        {
+            if (await db.Users.AnyAsync(user => user.Email == email, cancellationToken))
+                continue;
+
+            var password = configuration[passwordKey];
+            if (string.IsNullOrEmpty(password))
+                throw new InvalidOperationException($"Missing development-user password setting '{passwordKey}'. Set it with dotnet user-secrets before starting in Development.");
+
+            if (!roles.TryGetValue(roleName, out var role))
+                throw new InvalidOperationException($"Role '{roleName}' is missing. Run reference-data seeding first.");
+
+            var user = new User
+            {
+                FullName = fullName,
+                Email = email,
+                RoleId = role.RoleId,
+                Role = role,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            user.PasswordHash = passwordHasher.Hash(user, password);
+            db.Users.Add(user);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Development users seeded when missing.");
+    }
+}

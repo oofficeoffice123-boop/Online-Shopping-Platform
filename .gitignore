@@ -18,8 +18,8 @@
 *.nupkg
 
 # Local application configuration and credentials
-ShopEase.API/appsettings.json
-ShopEase.API/appsettings.Development.json
+ZSquare.API/appsettings.json
+ZSquare.API/appsettings.Development.json
 **/appsettings.Local.json
 **/secrets.json
 **/secrets.*.json
@@ -51,7 +51,8 @@ ShopEase.API/appsettings.Development.json
 .DS_Store
 Thumbs.db
 Desktop.ini
-*.html
 *.http
-ShopEase.Tests
 .vscode
+Properties
+*.html
+ZSquare.Tests

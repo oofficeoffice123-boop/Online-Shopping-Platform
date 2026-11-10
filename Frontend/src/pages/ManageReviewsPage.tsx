@@ -1,0 +1,13 @@
+import { useEffect, useState } from 'react'
+import { api } from '../auth/apiClient'
+
+type Review = { reviewId:number;productId:number;productName:string;reviewerName:string;rating:number;comment:string|null;createdAt:string;isHidden:boolean;moderatedAt:string|null;moderatedBy:string|null }
+export default function ManageReviewsPage(){
+  const [items,setItems]=useState<Review[]>([]);const[page,setPage]=useState(1);const[totalPages,setTotalPages]=useState(1);const[productId,setProductId]=useState('');const[rating,setRating]=useState('');const[hidden,setHidden]=useState('');const[error,setError]=useState('')
+  async function load(){try{const{data}=await api.get('/api/manage/reviews',{params:{page,pageSize:20,productId:productId||undefined,rating:rating||undefined,hidden:hidden||undefined}});setItems(data.items);setTotalPages(data.totalPages);setError('')}catch{setError('Reviews could not be loaded.') }}
+  useEffect(()=>{void load()},[page,productId,rating,hidden])
+  return <main className="manage-page"><p className="eyebrow">STAFF AREA</p><h1>Review moderation</h1><div className="review-filters"><label>Product ID<input type="number" min="1" value={productId} onChange={e=>{setProductId(e.target.value);setPage(1)}} /></label><label>Rating<select value={rating} onChange={e=>{setRating(e.target.value);setPage(1)}}><option value="">All ratings</option>{[5,4,3,2,1].map(x=><option key={x}>{x}</option>)}</select></label><label>Visibility<select value={hidden} onChange={e=>{setHidden(e.target.value);setPage(1)}}><option value="">All</option><option value="false">Visible</option><option value="true">Hidden</option></select></label></div>{error&&<p role="alert">{error}</p>}
+    <div className="manage-list">{items.map(review=><article className="moderation-review" key={review.reviewId}><div><strong>{review.productName} · {review.rating} ★</strong><small>{review.reviewerName} · {new Date(review.createdAt).toLocaleDateString()}</small>{review.comment&&<p>{review.comment}</p>}<small>{review.isHidden?`Hidden${review.moderatedBy?` by ${review.moderatedBy}`:''}`:'Visible'}</small></div><button onClick={async()=>{await api.patch(`/api/manage/reviews/${review.reviewId}/hidden`,{isHidden:!review.isHidden});await load()}}>{review.isHidden?'Unhide':'Hide'}</button><button onClick={async()=>{if(window.confirm('Delete this review?')){await api.delete(`/api/manage/reviews/${review.reviewId}`);await load()}}}>Delete</button></article>)}</div>
+    {totalPages>1&&<nav className="review-pagination"><button disabled={page<=1} onClick={()=>setPage(page-1)}>Previous</button><span>Page {page} of {totalPages}</span><button disabled={page>=totalPages} onClick={()=>setPage(page+1)}>Next</button></nav>}
+  </main>
+}
