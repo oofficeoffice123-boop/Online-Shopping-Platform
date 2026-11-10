@@ -1,2 +1,39 @@
 ShopEase.API/appsettings.json
 ShopEase.API/appsettings.Development.json
+
+# .NET build output
+**/bin/
+**/obj/
+[Pp]ackages/
+TestResults/
+*.user
+*.suo
+*.cache
+
+# IDEs
+.vs/
+.idea/
+.vscode/
+*.sln.docstates
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+secrets.json
+secrets.*.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
