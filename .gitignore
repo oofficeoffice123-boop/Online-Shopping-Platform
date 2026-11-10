@@ -1,45 +1,57 @@
-ShopEase.API/appsettings.json
-ShopEase.API/appsettings.Development.json
-ShopEase.API/wwwroot/images/
-
-# .NET build output
+# .NET build output and test results
 **/bin/
 **/obj/
-[Pp]ackages/
-TestResults/
+**/TestResults/
+**/out/
+.vs/
 *.user
 *.suo
 *.cache
+*.pdb
+*.dll
+*.exe
+*.coverage
+*.coveragexml
 
-# IDEs
-.vs/
+# Local NuGet packages
+[Pp]ackages/
+*.nupkg
+
+# Local application configuration and credentials
+ShopEase.API/appsettings.json
+ShopEase.API/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json
+**/secrets.*.json
+**/.env
+**/.env.*
+!**/.env.example
+
+# Imported product images are local data, not source files
+**/wwwroot/images/
+
+# Frontend dependencies and generated output
+**/node_modules/
+**/dist/
+**/coverage/
+**/.vite/
+
+# IDE and editor files
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.sln.docstates
 
-# Frontend dependencies and build output
-node_modules/
-dist/
-coverage/
-
-# Local environment and secrets
-.env
-.env.*
-!.env.example
-secrets.json
-secrets.*.json
-
-# Logs and temporary files
+# Logs, temporary files, and operating system metadata
 *.log
 *.tmp
 *.temp
-
-# OS files
+*.bak
+*.swp
 .DS_Store
 Thumbs.db
 Desktop.ini
+*.html
 *.http
-*.csproj
-appsettings.json
-appsettings.Development.json
-launchSettings.json
+ShopEase.Tests
+.vscode
