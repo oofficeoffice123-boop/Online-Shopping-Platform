@@ -1,5 +1,6 @@
 ShopEase.API/appsettings.json
 ShopEase.API/appsettings.Development.json
+ShopEase.API/wwwroot/images/
 
 # .NET build output
 **/bin/
@@ -37,3 +38,8 @@ secrets.*.json
 .DS_Store
 Thumbs.db
 Desktop.ini
+*.http
+*.csproj
+appsettings.json
+appsettings.Development.json
+launchSettings.json
