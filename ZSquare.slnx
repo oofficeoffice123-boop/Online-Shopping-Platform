@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ZSquare.Domain/ZSquare.Domain.csproj" />
+  <Project Path="ZSquare.Application/ZSquare.Application.csproj" />
+  <Project Path="ZSquare.Infrastructure/ZSquare.Infrastructure.csproj" />
+  <Project Path="ZSquare.API/ZSquare.API.csproj" />
+</Solution>
