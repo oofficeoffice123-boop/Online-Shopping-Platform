@@ -1,23 +1,11 @@
-using System.Threading.RateLimiting;
-using System.Security.Claims;
-using System.Text;
-using FluentValidation;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using ZSquare.API.Extensions;
 using ZSquare.API.Middleware;
-using ZSquare.API.Controllers;
-using ZSquare.Application;
-using ZSquare.Application.Auth;
-using ZSquare.Application.Commerce;
 using ZSquare.Application.Search;
 using ZSquare.Infrastructure;
 using ZSquare.Infrastructure.Auth;
-using ZSquare.Infrastructure.Commerce;
 using ZSquare.Infrastructure.Import;
-using ZSquare.Infrastructure.Search;
 
 var importMode = args.Any(argument => argument.Equals("import", StringComparison.OrdinalIgnoreCase) ||
                                       argument.Equals("--import", StringComparison.OrdinalIgnoreCase));
@@ -26,117 +14,10 @@ var builder = WebApplication.CreateBuilder(args.Where(argument =>
     !argument.Equals("--import", StringComparison.OrdinalIgnoreCase)).ToArray());
 
 builder.Host.UseSerilog((_, logger) => logger.WriteTo.Console());
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddMemoryCache();
-var reactOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:5173"];
-if (reactOrigins.Length == 0 || reactOrigins.Any(origin => string.IsNullOrWhiteSpace(origin) || origin == "*"))
-    throw new InvalidOperationException("Configure one or more explicit React origins in Cors:AllowedOrigins; wildcard origins are not allowed.");
-builder.Services.AddCors(options => options.AddPolicy("React", policy =>
-    policy.WithOrigins(reactOrigins)
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials()));
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy("SmartSearch", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 20,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-    options.AddPolicy("AuthLogin", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-    options.AddPolicy("AuthRegister", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromHours(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-});
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ZSquare.API";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ZSquare.ReactClient";
-var jwtSigningKey = builder.Configuration["Jwt:SigningKey"];
-if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
-    throw new InvalidOperationException("Jwt:SigningKey must contain at least 32 bytes and be provided through user-secrets or an environment variable.");
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidIssuer = jwtIssuer,
-        ValidateAudience = true,
-        ValidAudience = jwtAudience,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
-        ClockSkew = TimeSpan.Zero,
-        NameClaimType = ClaimTypes.NameIdentifier,
-        RoleClaimType = ClaimTypes.Role
-    });
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("StaffOnly", policy => policy.RequireRole(Roles.Manager, Roles.Admin));
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole(Roles.Admin));
-    options.AddPolicy("CustomerOnly", policy => policy.RequireRole(Roles.Customer));
-});
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.")));
-builder.Services.AddScoped<ReferenceDataSeeder>();
-builder.Services.AddScoped<KhaadiImporter>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-builder.Services.AddSingleton<IUserPasswordHasher, UserPasswordHasher>();
-builder.Services.AddScoped<IAccessTokenService, AccessTokenService>();
-builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
-builder.Services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
-builder.Services.AddScoped<IValidator<AddressRequest>, AddressRequestValidator>();
-builder.Services.AddScoped<IValidator<AddCartItemRequest>, AddCartItemRequestValidator>();
-builder.Services.AddScoped<IValidator<SetCartItemQuantityRequest>, SetCartItemQuantityRequestValidator>();
-builder.Services.AddScoped<IValidator<CheckoutRequest>, CheckoutRequestValidator>();
-builder.Services.AddScoped<IValidator<ProductRequest>, ProductRequestValidator>();
-builder.Services.AddScoped<IValidator<ActiveRequest>, ActiveRequestValidator>();
-builder.Services.AddScoped<IValidator<VariantCreateRequest>, VariantCreateRequestValidator>();
-builder.Services.AddScoped<IValidator<VariantUpdateRequest>, VariantUpdateRequestValidator>();
-builder.Services.AddScoped<IValidator<StockRequest>, StockRequestValidator>();
-builder.Services.AddScoped<IValidator<StatusRequest>, StatusRequestValidator>();
-builder.Services.AddScoped<IValidator<ImageOrderRequest>, ImageOrderRequestValidator>();
-builder.Services.AddScoped<IValidator<CategoryRequest>, CategoryRequestValidator>();
-builder.Services.AddScoped<IValidator<NameRequest>, NameRequestValidator>();
-builder.Services.AddScoped<IValidator<ColorRequest>, ColorRequestValidator>();
-builder.Services.AddScoped<IValidator<CreateStaffRequest>, CreateStaffRequestValidator>();
-builder.Services.AddScoped<IValidator<ChangeUserRoleRequest>, ChangeUserRoleRequestValidator>();
-builder.Services.AddScoped<IValidator<SetUserActiveRequest>, SetUserActiveRequestValidator>();
-builder.Services.AddScoped<IValidator<ReviewWriteRequest>, ReviewWriteRequestValidator>();
-builder.Services.AddScoped<IValidator<SetReviewHiddenRequest>, SetReviewHiddenRequestValidator>();
-builder.Services.AddScoped<DevelopmentUserSeeder>();
-builder.Services.AddHostedService<RefreshTokenCleanupService>();
-builder.Services.AddHttpClient<AiProductFilterInterpreter>(client => client.Timeout = TimeSpan.FromSeconds(10));
-builder.Services.AddScoped<IProductFilterInterpreter>(services => services.GetRequiredService<AiProductFilterInterpreter>());
-builder.Services.AddScoped<ISearchCatalogProvider, CachedSearchCatalogProvider>();
-builder.Services.AddScoped<IProductSearchService, ProductSearchService>();
-builder.Services.AddScoped<IProductBrowsingService, ProductSearchService>();
-builder.Services.AddScoped<ICustomerCommerceService, CustomerCommerceService>();
-builder.Services.AddScoped<ISmartSearchService, SmartSearchService>();
-builder.Services.AddSingleton<SmartSearchFilterParser>();
+builder.Services
+    .AddApiServices(builder.Configuration)
+    .AddApplicationServices()
+    .AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
@@ -175,26 +56,6 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCors("React");
 app.UseRateLimiter();
 app.UseAuthentication();
-app.Use(async (context, next) =>
-{
-    var needsPasswordChange = context.User.Identity?.IsAuthenticated == true &&
-        context.User.FindFirst("must_change_password")?.Value == "true";
-    var allowed = context.Request.Path.StartsWithSegments("/api/auth/change-password") ||
-        context.Request.Path.StartsWithSegments("/api/auth/logout") ||
-        context.Request.Path.StartsWithSegments("/api/auth/me");
-    if (needsPasswordChange && !allowed)
-    {
-        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        await context.Response.WriteAsJsonAsync(new ProblemDetails
-        {
-            Status = StatusCodes.Status403Forbidden,
-            Title = "Password change required.",
-            Detail = "Change the temporary password before using the application."
-        });
-        return;
-    }
-    await next();
-});
 app.UseAuthorization();
 app.UseStaticFiles();
 
