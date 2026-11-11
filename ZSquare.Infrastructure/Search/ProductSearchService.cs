@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ZSquare.Application.Search;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Search;
 
 public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : IProductSearchService, IProductBrowsingService

@@ -1,13 +1,13 @@
-using System.Security.Cryptography;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ZSquare.API.Security;
-using ZSquare.Application;
 using ZSquare.Application.Auth;
+using ZSquare.Application;
 using ZSquare.Domain;
 using ZSquare.Infrastructure;
+using System.Security.Cryptography;
 
 namespace ZSquare.API.Controllers;
 

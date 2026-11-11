@@ -1,8 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore;
 using ZSquare.Application.Commerce;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Commerce;
 
 public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerceService

@@ -1,6 +1,5 @@
 using ZSquare.Application;
 using ZSquare.Domain;
-
 namespace ZSquare.Application.Auth;
 
 public sealed class AuthService(

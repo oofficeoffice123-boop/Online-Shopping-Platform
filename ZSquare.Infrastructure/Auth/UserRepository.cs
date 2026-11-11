@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ZSquare.Application.Auth;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Auth;
 
 public sealed class UserRepository(AppDbContext db) : IUserRepository

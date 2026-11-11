@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using ZSquare.Application.Search;
-
 namespace ZSquare.Infrastructure.Search;
 
 public sealed class CachedSearchCatalogProvider(AppDbContext db, IMemoryCache cache) : ISearchCatalogProvider

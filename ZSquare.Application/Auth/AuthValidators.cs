@@ -1,5 +1,4 @@
 using FluentValidation;
-
 namespace ZSquare.Application.Auth;
 
 public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest>

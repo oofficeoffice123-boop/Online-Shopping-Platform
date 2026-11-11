@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using ZSquare.API.Security;
 using ZSquare.Domain;
 using ZSquare.Infrastructure;
-
 namespace ZSquare.API.Controllers;
 
 [ApiController]

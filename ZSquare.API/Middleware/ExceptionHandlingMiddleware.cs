@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-
 namespace ZSquare.API.Middleware;
 
 public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)

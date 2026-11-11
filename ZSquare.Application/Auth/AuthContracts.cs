@@ -1,5 +1,5 @@
-using System.Text.Json.Serialization;
 using ZSquare.Domain;
+using System.Text.Json.Serialization;
 
 namespace ZSquare.Application.Auth;
 

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using ZSquare.Application.Auth;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Auth;
 
 public sealed class UserPasswordHasher : IUserPasswordHasher

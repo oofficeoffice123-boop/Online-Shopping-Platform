@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace ZSquare.Application.Search;
 

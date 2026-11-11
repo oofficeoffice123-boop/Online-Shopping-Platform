@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ZSquare.Application;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure;
 
 public sealed class ReferenceDataSeeder(AppDbContext db, ILogger<ReferenceDataSeeder> logger)

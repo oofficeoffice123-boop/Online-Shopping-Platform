@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Configurations;
 
 public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>

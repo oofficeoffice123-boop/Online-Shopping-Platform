@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZSquare.API.Security;
 using ZSquare.Application.Commerce;
-
 namespace ZSquare.API.Controllers;
 
 [ApiController]

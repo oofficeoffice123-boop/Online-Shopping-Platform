@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ZSquare.Application.Auth;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Auth;
 
 public sealed class RefreshTokenCleanupService(

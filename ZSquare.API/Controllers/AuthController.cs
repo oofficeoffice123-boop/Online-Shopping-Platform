@@ -1,13 +1,12 @@
-using FluentValidation;
 using FluentValidation.Results;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using ZSquare.Application.Auth;
 using ZSquare.API.Security;
+using ZSquare.Application.Auth;
 using ZSquare.Domain;
-
 namespace ZSquare.API.Controllers;
 
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);

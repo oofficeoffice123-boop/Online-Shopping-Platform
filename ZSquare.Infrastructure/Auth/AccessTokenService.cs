@@ -1,10 +1,10 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using ZSquare.Application.Auth;
 using ZSquare.Domain;
+using System.Security.Claims;
+using System.Text;
 
 namespace ZSquare.Infrastructure.Auth;
 

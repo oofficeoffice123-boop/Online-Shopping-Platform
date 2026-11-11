@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using ZSquare.Application;
 using ZSquare.Application.Auth;
+using ZSquare.Application;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure.Auth;
 
 public sealed class DevelopmentUserSeeder(

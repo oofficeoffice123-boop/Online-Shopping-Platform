@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using ZSquare.Domain;
-
 namespace ZSquare.Infrastructure;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)

@@ -1,5 +1,4 @@
 using FluentValidation;
-
 namespace ZSquare.Application.Commerce;
 
 public sealed record CartDto(IReadOnlyList<CartLineDto> Items, decimal Subtotal);
