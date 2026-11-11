@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import ProtectedRoute from './auth/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
@@ -19,7 +19,12 @@ import { useEffect, useState } from 'react'
 export default function App() {
   const { user, isLoading, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [cart, setCart] = useState<Cart | null>(null)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     let active = true

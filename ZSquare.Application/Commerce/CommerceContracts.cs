@@ -110,6 +110,7 @@ public sealed record OrderPageDto(
 
 public sealed record OrderItemDto(
     int VariantId,
+    int ProductId,
     string ProductName,
     string Size,
     string Color,
@@ -118,12 +119,11 @@ public sealed record OrderItemDto(
     decimal UnitPrice,
     decimal LineTotal);
 
-public sealed record OrderPaymentDto(string Method, string Status, decimal Amount, string? TransactionRef, DateTime? PaidAt);
-
 public sealed record OrderDetailsDto(
     int OrderId,
     string Status,
     DateTime OrderDate,
+    DateTime? DeliveredAt,
     decimal TotalAmount,
     string ShipName,
     string ShipLine1,
@@ -131,8 +131,7 @@ public sealed record OrderDetailsDto(
     string ShipCity,
     string ShipPostalCode,
     string ShipCountry,
-    IReadOnlyList<OrderItemDto> Items,
-    IReadOnlyList<OrderPaymentDto> Payments);
+    IReadOnlyList<OrderItemDto> Items);
 
 public sealed record CommerceError(int StatusCode, string Title, IReadOnlyDictionary<string, string[]> Errors);
 

@@ -26,11 +26,10 @@ export default function HomePage() {
     <section className="browse-hero">
       <div className="browse-hero-copy">
       <p className="eyebrow">Z SQUARE · SUMMER COLLECTION</p>
-        <h1>Wear the<br /><em>everyday</em> beautifully.</h1>
-        <p>Color, craft, and clothes made to move with you.</p>
+        <h1>Elevate Your<br /><em>everyday</em></h1>
+        <p>Colorfully crafted. Effortlessly worn.</p>
         <Link className="browse-cta" to="/products">Explore the collection <span>↗</span></Link>
       </div>
-      <div className="browse-hero-stamp"><span>ROOTED IN<br />COLOR</span><i>✳</i></div>
     </section>
 
     <section className="browse-section">

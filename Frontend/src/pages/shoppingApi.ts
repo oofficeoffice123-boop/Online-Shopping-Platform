@@ -42,14 +42,14 @@ export type OrderSummary = {
 export type OrderPage = { items: OrderSummary[]; page: number; pageSize: number; totalCount: number; totalPages: number }
 
 export type OrderDetails = Pick<OrderSummary, 'orderId' | 'status' | 'orderDate' | 'totalAmount'> & {
+  deliveredAt: string | null
   shipName: string
   shipLine1: string
   shipLine2: string | null
   shipCity: string
   shipPostalCode: string
   shipCountry: string
-  items: { variantId: number; productName: string; size: string; color: string; imageUrl: string | null; quantity: number; unitPrice: number; lineTotal: number }[]
-  payments: { method: string; status: string; amount: number; transactionRef: string | null; paidAt: string | null }[]
+  items: { variantId: number; productId: number; productName: string; size: string; color: string; imageUrl: string | null; quantity: number; unitPrice: number; lineTotal: number }[]
 }
 
 export const money = (value: number) => `PKR ${value.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { assetUrl, colorValue, formatPrice, getProduct, type ProductDetails } from './productApi'
 import { useAuth } from '../auth/AuthContext'
 import { addCartItem, notifyCartUpdated } from './shoppingApi'
-import ProductReviews from './ProductReviews'
 
 export default function ProductDetailsPage() {
   const { id = '' } = useParams()
@@ -77,7 +76,7 @@ export default function ProductDetailsPage() {
       </section>
 
       <section className="detail-info">
-        <p className="eyebrow">{product.categoryName} <span>·</span> {product.productCode}</p>
+        <p className="eyebrow">{product.categoryName}</p>
         <h1>{product.name}</h1>
         <p className="detail-price">{formatPrice(selectedVariant?.price ?? product.price)}</p>
         <p className="detail-stock">{selectedVariant ? selectedVariant.inStock ? selectedVariant.lowStock ? 'Low stock — order soon' : 'In stock' : 'Out of stock' : 'Select a size and color'}</p>
@@ -99,6 +98,5 @@ export default function ProductDetailsPage() {
         </button>
       </section>
     </div>
-    <ProductReviews productId={product.id} />
   </main>
 }

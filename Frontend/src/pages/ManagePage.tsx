@@ -1,88 +1,393 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../auth/apiClient'
+import { assetUrl } from './productApi'
+import './ManagePage.css'
 
-type Product = { productId: number; productCode: string; name: string; description?: string; categoryId: number; category: string; basePrice: number; isActive: boolean }
-type Order = { orderId: number; orderDate: string; name: string; totalAmount: number; customer: string }
-type Dashboard = { ordersByStatus: { status: string; count: number }[]; ordersToday: number; lowStockVariants: { variantId: number; sku: string; stockQty: number; product: string; size: string; color: string }[]; recentOrders: Order[] }
+type Category = { categoryId: number; name: string }
+type AdminUser = { userId: number; fullName: string; email: string; role: string; isActive: boolean; isDeleted: boolean }
+type AdminDashboard = { revenue?: { today: number; last7: number; last30: number }; topProducts?: { productId: number; name: string; units: number }[] }
 
 export default function ManagePage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'Admin'
-  const [products, setProducts] = useState<Product[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null)
-  const [adminDashboard, setAdminDashboard] = useState<any>(null)
-  const [orderDetail, setOrderDetail] = useState<any>(null)
-  const [users, setUsers] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [sizes, setSizes] = useState<any[]>([])
-  const [colors, setColors] = useState<any[]>([])
-  const [notice, setNotice] = useState('')
-  const [search, setSearch] = useState('')
-  const [productForm, setProductForm] = useState({ productCode: '', name: '', description: '', categoryId: 0, basePrice: 1 })
+  const [categories, setCategories] = useState<Category[]>([])
+  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard | null>(null)
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [adminError, setAdminError] = useState('')
 
-  async function load() {
-    const [p, o, d, c, s, co] = await Promise.all([
-      api.get('/api/manage/products', { params: { page: 1, pageSize: 100, search: search || undefined } }),
-      api.get('/api/manage/orders', { params: { page: 1, pageSize: 20 } }),
-      api.get<Dashboard>('/api/manage/dashboard'),
-      api.get('/api/manage/categories'),
-      api.get('/api/manage/sizes'),
-      api.get('/api/manage/colors'),
-    ])
-    setProducts(p.data.items); setOrders(o.data.items); setDashboard(d.data); setCategories(c.data); setSizes(s.data); setColors(co.data)
-    if (isAdmin) {
-      const [a, u] = await Promise.all([api.get('/api/admin/dashboard'), api.get('/api/admin/users', { params: { page: 1, pageSize: 100 } })])
-      setAdminDashboard(a.data); setUsers(u.data.items)
+  const loadAdminData = useCallback(async () => {
+    try {
+      const [dashboard, userList] = await Promise.all([
+        api.get<AdminDashboard>('/api/admin/dashboard'),
+        api.get('/api/admin/users', { params: { page: 1, pageSize: 100 } }),
+      ])
+      setAdminDashboard(dashboard.data)
+      setUsers(userList.data.items)
+      setAdminError('')
+    } catch {
+      setAdminError('Admin information could not be loaded.')
     }
-  }
-  useEffect(() => { void load().catch(() => setNotice('Could not load management data.')) }, [isAdmin])
+  }, [])
 
-  async function createProduct(event: React.FormEvent) {
-    event.preventDefault()
-    try { await api.post('/api/manage/products', productForm); setNotice('Product created.'); setProductForm({ productCode: '', name: '', description: '', categoryId: 0, basePrice: 1 }); await load() }
-    catch { setNotice('Product could not be created. Check the fields and ProductCode uniqueness.') }
-  }
-  async function toggleProduct(p: Product) { await api.patch(`/api/manage/products/${p.productId}/active`, { isActive: !p.isActive }); await load() }
-  async function status(order: Order, next: string) { await api.patch(`/api/manage/orders/${order.orderId}/status`, { status: next }); await load() }
-  const nextStatuses: Record<string, string[]> = { Pending: ['Paid', 'Cancelled'], Paid: ['Shipped', 'Cancelled'], Shipped: ['Delivered'] }
+  useEffect(() => {
+    void api.get<Category[]>('/api/manage/categories')
+      .then(({ data }) => setCategories(data))
+      .catch(() => setCategories([]))
+  }, [])
+  useEffect(() => { if (isAdmin) void loadAdminData() }, [isAdmin, loadAdminData])
 
   return <main className="manage-page">
-    <p className="eyebrow">STAFF AREA</p><h1>Welcome, {user?.fullName}</h1><p>Manage catalog, inventory and customer orders.</p>
-    {notice && <p role="status">{notice}</p>}
-    <section><h2>Overview</h2><p>Orders today: <strong>{dashboard?.ordersToday ?? 0}</strong></p><div className="manage-statuses">{dashboard?.ordersByStatus.map(x => <span key={x.status}>{x.status}: {x.count}</span>)}</div>
-      <h3>Low stock (5 or fewer)</h3><ul>{dashboard?.lowStockVariants.map(v => <li key={v.variantId}>{v.product} · {v.size} · {v.color} — {v.stockQty} left ({v.sku})</li>)}</ul></section>
-    <section><h2>Products</h2><label>Search <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && void load()} /></label>
-      <form onSubmit={e => void createProduct(e)} className="manage-form"><h3>Add product</h3><input placeholder="Product code" required value={productForm.productCode} onChange={e => setProductForm({ ...productForm, productCode: e.target.value })} /><input placeholder="Name" required value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} /><input placeholder="Description" value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} /><select required value={productForm.categoryId || ''} onChange={e => setProductForm({ ...productForm, categoryId: Number(e.target.value) })}><option value="">Category</option>{categories.map((c: any) => <option key={c.categoryId} value={c.categoryId}>{c.name}</option>)}</select><input type="number" min="0.01" step="0.01" required value={productForm.basePrice} onChange={e => setProductForm({ ...productForm, basePrice: Number(e.target.value) })} /><button>Create</button></form>
-      <div className="manage-list">{products.map(p => <div key={p.productId}><article><strong>{p.name}</strong> <small>{p.productCode} · {p.category} · PKR {p.basePrice}</small><span>{p.isActive ? 'Active' : 'Inactive'}</span><button onClick={() => void toggleProduct(p)}>{p.isActive ? 'Deactivate' : 'Activate'}</button>{isAdmin&&<button onClick={async()=>{if(window.confirm('Hard-delete this product? Ordered products cannot be deleted.')){await api.delete(`/api/manage/products/${p.productId}`);await load()}}}>Delete</button>}</article><ProductTools product={p} categories={categories} sizes={sizes} colors={colors} reload={load} /></div>)}</div>
+    <section className="manager-hero">
+      <div><p className="eyebrow">Z SQUARE · OPERATIONS</p><h1>Inventory control</h1><p>Good to see you, {user?.fullName}. Keep the shelves and orders moving.</p></div>
+      <span className="manager-live"><i /> LIVE INVENTORY</span>
     </section>
-    <section><h2>Categories, sizes and colors</h2><form className="manage-form" onSubmit={async e => { e.preventDefault(); const f=new FormData(e.currentTarget); await api.post('/api/manage/categories',{name:f.get('name'),parentCategoryId:f.get('parentCategoryId') ? Number(f.get('parentCategoryId')) : null}); await load() }}><input name="name" placeholder="Category name" required /><select name="parentCategoryId"><option value="">No parent</option>{categories.map(c=><option key={c.categoryId} value={c.categoryId}>{c.name}</option>)}</select><button>Add category</button></form><ul>{categories.map(c=><li key={c.categoryId}>{c.name}<button onClick={async()=>{const name=window.prompt('Category name',c.name);if(name){await api.put(`/api/manage/categories/${c.categoryId}`,{name,parentCategoryId:c.parentCategoryId});await load()}}}>Edit</button><button onClick={async()=>{await api.delete(`/api/manage/categories/${c.categoryId}`);await load()}}>Delete</button></li>)}</ul>
-      {(['sizes','colors'] as const).map(kind=><div key={kind}><h3>{kind}</h3><form className="manage-form" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api.post(`/api/manage/${kind}`,{name:f.get('name')});await load()}}><input name="name" placeholder={`New ${kind.slice(0,-1)}`} required /><button>Add</button></form><ul>{(kind==='sizes'?sizes:colors).map(x=><li key={x.sizeId??x.colorId}>{x.label??x.name}<button onClick={async()=>{const name=window.prompt(`${kind.slice(0,-1)} name`,x.label??x.name);if(name){const id=x.sizeId??x.colorId;await api.put(`/api/manage/${kind}/${id}`,{name});await load()}}}>Edit</button><button onClick={async()=>{await api.delete(`/api/manage/${kind}/${x.sizeId??x.colorId}`);await load()}}>Delete</button></li>)}</ul></div>)}
-    </section>
-    <section><h2>Orders</h2><div className="manage-list">{orders.map(o => <article key={o.orderId}><button onClick={async()=>{const {data}=await api.get(`/api/manage/orders/${o.orderId}`);setOrderDetail(data)}}>#{o.orderId}</button><small>{o.customer} · {new Date(o.orderDate).toLocaleDateString()} · PKR {o.totalAmount}</small><span>{o.name}</span><select aria-label={`Set status for order ${o.orderId}`} value="" onChange={e => e.target.value && void status(o, e.target.value)}><option value="">Update status</option>{(nextStatuses[o.name] ?? []).map(s => <option key={s}>{s}</option>)}</select></article>)}</div>{orderDetail&&<div role="dialog" aria-label={`Order ${orderDetail.orderId} details`}><button onClick={()=>setOrderDetail(null)}>Close</button><h3>Order #{orderDetail.orderId} · {orderDetail.status}</h3><p>{orderDetail.customer.fullName} · {orderDetail.customer.email}</p><ul>{orderDetail.items.map((item:any,index:number)=><li key={index}>{item.name}: {item.quantity} × PKR {item.unitPrice}</li>)}</ul><ul>{orderDetail.payments.map((payment:any,index:number)=><li key={index}>{payment.method}: {payment.status}, PKR {payment.amount}</li>)}</ul></div>}</section>
-    {isAdmin && <><section><h2>Revenue</h2><div className="manage-statuses"><span>Today: PKR {adminDashboard?.revenue?.today ?? 0}</span><span>7 days: PKR {adminDashboard?.revenue?.last7 ?? 0}</span><span>30 days: PKR {adminDashboard?.revenue?.last30 ?? 0}</span></div><h3>Daily revenue, 30 days</h3><div className="revenue-bars" role="img" aria-label="Daily revenue chart">{adminDashboard?.dailyRevenue?.map((x: any) => <span key={x.date} title={`${x.date}: PKR ${x.revenue}`} style={{ height: `${Math.max(2, Math.min(100, x.revenue / Math.max(1, ...adminDashboard.dailyRevenue.map((r: any) => r.revenue)) * 100))}%` }} />)}</div><h3>Top products</h3><ol>{adminDashboard?.topProducts?.map((p: any) => <li key={p.productId}>{p.name}: {p.units} sold</li>)}</ol></section>
-      <section><h2>User management</h2><form className="manage-form" onSubmit={async e => { e.preventDefault(); const f = new FormData(e.currentTarget); const { data } = await api.post('/api/admin/users', { fullName: f.get('fullName'), email: f.get('email'), role: f.get('role') }); window.alert(`Initial password (copy now): ${data.initialPassword}`); await load() }}><input name="fullName" placeholder="Full name" required /><input name="email" type="email" placeholder="Email" required /><select name="role"><option>Manager</option><option>Admin</option></select><button>Create staff user</button></form><div className="manage-list">{users.map((u: any) => <article key={u.userId}><strong>{u.fullName}</strong><small>{u.email} · {u.role}{u.isDeleted ? ' · Deleted' : ''}</small><select disabled={u.isDeleted} value={u.role} onChange={async e => { await api.patch(`/api/admin/users/${u.userId}/role`, { role: e.target.value }); await load() }}><option>Customer</option><option>Manager</option><option>Admin</option></select><button disabled={u.userId === user?.userId || u.isDeleted} onClick={async () => { await api.patch(`/api/admin/users/${u.userId}/active`, { isActive: !u.isActive }); await load() }}>{u.isActive ? 'Disable' : 'Enable'}</button><button disabled={u.userId === user?.userId} onClick={async () => { if (u.isDeleted) { await api.patch(`/api/admin/users/${u.userId}/deleted`, { isDeleted: false }); } else if (window.confirm(`Soft-delete ${u.fullName}?`)) { await api.patch(`/api/admin/users/${u.userId}/deleted`, { isDeleted: true }); } await load() }}>{u.isDeleted ? 'Restore' : 'Delete'}</button></article>)}</div></section></>}
+    <InventoryWorkspace categories={categories} />
+    <OrderWorkspace />
+    {isAdmin && <AdminTools dashboard={adminDashboard} users={users} currentUserId={user?.userId} error={adminError} reload={loadAdminData} />}
   </main>
 }
+type InventoryRow = {
+  variantId: number
+  productId: number
+  productCode: string
+  productName: string
+  imageUrl: string | null
+  category: string
+  sku: string
+  size: string
+  color: string
+  stockQty: number
+  price: number
+  productActive: boolean
+  variantActive: boolean
+  rowVersion: string
+}
 
-function ProductTools({ product, categories, sizes, colors, reload }: { product: Product; categories: any[]; sizes: any[]; colors: any[]; reload: () => Promise<void> }) {
-  const [open, setOpen] = useState(false)
-  const [variants, setVariants] = useState<any[]>([])
-  const [images, setImages] = useState<any[]>([])
-  const [variantForm, setVariantForm] = useState({ sizeId: 0, colorId: 0, stockQty: 0, priceOverride: '' })
-  const refresh = async () => {
-    const [v, i] = await Promise.all([api.get(`/api/manage/products/${product.productId}/variants`), api.get(`/api/manage/products/${product.productId}/images`)]); setVariants(v.data); setImages(i.data)
+type InventoryResponse = {
+  items: InventoryRow[]
+  page: number
+  pageSize: number
+  totalCount: number
+  summary: { variantCount: number; totalUnits: number; lowStockCount: number; outOfStockCount: number }
+}
+
+function InventoryWorkspace({ categories }: { categories: any[] }) {
+  const [rows, setRows] = useState<InventoryRow[]>([])
+  const [lowRows, setLowRows] = useState<InventoryRow[]>([])
+  const [summary, setSummary] = useState<InventoryResponse['summary'] | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [searchText, setSearchText] = useState('')
+  const [search, setSearch] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [stockFilter, setStockFilter] = useState('all')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [draftStock, setDraftStock] = useState('')
+  const [editingPriceId, setEditingPriceId] = useState<number | null>(null)
+  const [draftPrice, setDraftPrice] = useState('')
+  const [savingId, setSavingId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const pageSize = 25
+
+  const loadInventory = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const params = { page, pageSize, search: search || undefined, categoryId: categoryId || undefined, stock: stockFilter }
+      const [main, low, out] = await Promise.all([
+        api.get<InventoryResponse>('/api/manage/inventory', { params }),
+        api.get<InventoryResponse>('/api/manage/inventory', { params: { page: 1, pageSize: 8, stock: 'low' } }),
+        api.get<InventoryResponse>('/api/manage/inventory', { params: { page: 1, pageSize: 8, stock: 'out' } }),
+      ])
+      setRows(main.data.items)
+      setTotalCount(main.data.totalCount)
+      setSummary(main.data.summary)
+      setLowRows([...out.data.items, ...low.data.items])
+    } catch {
+      setError('Inventory could not be loaded. Refresh or sign in again and retry.')
+    } finally {
+      setLoading(false)
+    }
+  }, [page, pageSize, search, categoryId, stockFilter])
+
+  useEffect(() => { void loadInventory() }, [loadInventory])
+
+  function beginEdit(row: InventoryRow) {
+    setEditingId(row.variantId)
+    setDraftStock(String(row.stockQty))
+    setNotice('')
   }
-  async function show() { if (!open) await refresh(); setOpen(!open) }
-  async function upload(files: FileList | null) { if (!files?.length) return; const body = new FormData(); Array.from(files).forEach(file => body.append('files', file)); await api.post(`/api/manage/products/${product.productId}/images`, body); await refresh() }
-  async function reorder(from: number, to: number) { const next = [...images]; const [item] = next.splice(from, 1); next.splice(to, 0, item); setImages(next); await api.put(`/api/manage/products/${product.productId}/images/reorder`, { imageIds: next.map(x => x.imageId) }) }
-  return <div className="manage-product-tools"><button type="button" onClick={() => void show()}>{open ? 'Hide editor' : 'Edit product, stock and images'}</button>{open && <div>
-    <form className="manage-form" onSubmit={async e => { e.preventDefault(); const f = new FormData(e.currentTarget); await api.put(`/api/manage/products/${product.productId}`, { productCode: f.get('productCode'), name: f.get('name'), description: f.get('description'), categoryId: Number(f.get('categoryId')), basePrice: Number(f.get('basePrice')) }); await reload() }}>
-      <input name="productCode" defaultValue={product.productCode} required /><input name="name" defaultValue={product.name} required /><input name="description" defaultValue={product.description ?? ''} /><select name="categoryId" defaultValue={product.categoryId}>{categories.map(c => <option key={c.categoryId} value={c.categoryId}>{c.name}</option>)}</select><input name="basePrice" type="number" min="0.01" step="0.01" defaultValue={product.basePrice} /><button>Save product</button>
-    </form>
-    <h4>Variants and stock</h4><form className="manage-form" onSubmit={async e => { e.preventDefault(); await api.post(`/api/manage/products/${product.productId}/variants`, { sizeId: variantForm.sizeId, colorId: variantForm.colorId, stockQty: variantForm.stockQty, priceOverride: variantForm.priceOverride ? Number(variantForm.priceOverride) : null }); setVariantForm({ sizeId: 0, colorId: 0, stockQty: 0, priceOverride: '' }); await refresh() }}><select required value={variantForm.sizeId || ''} onChange={e => setVariantForm({ ...variantForm, sizeId: Number(e.target.value) })}><option value="">Size</option>{sizes.map(x => <option key={x.sizeId} value={x.sizeId}>{x.label}</option>)}</select><select required value={variantForm.colorId || ''} onChange={e => setVariantForm({ ...variantForm, colorId: Number(e.target.value) })}><option value="">Color</option>{colors.map(x => <option key={x.colorId} value={x.colorId}>{x.name}</option>)}</select><input type="number" min="0" value={variantForm.stockQty} onChange={e => setVariantForm({ ...variantForm, stockQty: Number(e.target.value) })} /><input placeholder="Price override (optional)" type="number" min="0.01" step=".01" value={variantForm.priceOverride} onChange={e => setVariantForm({ ...variantForm, priceOverride: e.target.value })} /><button>Add variant</button></form>
-    <ul>{variants.map(v => <li key={v.variantId}>{v.sku} · {v.size} · {v.color} — {v.stockQty} in stock <button onClick={async () => { await api.patch(`/api/manage/variants/${v.variantId}/stock`, { set: 0, rowVersion: v.rowVersion }); await refresh() }}>Set stock to 0</button><button onClick={async()=>{const price=window.prompt('New override price (leave blank for product price)',v.priceOverride??'');if(price!==null){await api.put(`/api/manage/variants/${v.variantId}`,{priceOverride:price===''?null:Number(price),stockQty:v.stockQty,rowVersion:v.rowVersion});await refresh()}}}>Edit price</button><button onClick={async () => { if (window.confirm('Delete this variant? Ordered variants cannot be deleted.')) { await api.delete(`/api/manage/variants/${v.variantId}`); await refresh() } }}>Delete</button></li>)}</ul>
-    <h4>Images</h4><input type="file" accept=".jpg,.jpeg,.png,.webp" multiple onChange={e => void upload(e.target.files)} /><ul>{images.map((im, index) => <li key={im.imageId} draggable onDragStart={e => e.dataTransfer.setData('text/plain', String(index))} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); void reorder(Number(e.dataTransfer.getData('text/plain')), index) }}><img src={im.url} alt="Product" width="48" /> {im.isPrimary ? 'Primary' : ''}<button onClick={async () => { await api.put(`/api/manage/products/${product.productId}/images/${im.imageId}/primary`); await refresh() }}>Set primary</button><button onClick={async () => { await api.delete(`/api/manage/products/${product.productId}/images/${im.imageId}`); await refresh() }}>Delete</button> <small>Drag to reorder</small></li>)}</ul>
-  </div>}</div>
+
+  async function saveStock(row: InventoryRow) {
+    const nextStock = Number(draftStock)
+    if (!Number.isSafeInteger(nextStock) || nextStock < 0) {
+      setNotice('Enter a whole number of zero or more.')
+      return
+    }
+    setSavingId(row.variantId)
+    setNotice('')
+    try {
+      await api.patch(`/api/manage/variants/${row.variantId}/stock`, { set: nextStock, rowVersion: row.rowVersion })
+      setEditingId(null)
+      setNotice(`Stock updated for ${row.productName} · ${row.size} · ${row.color}.`)
+      await loadInventory()
+    } catch (requestError: any) {
+      setNotice(requestError?.response?.status === 409
+        ? 'This stock changed in another session. Refresh the inventory and try again.'
+        : 'Stock could not be saved. Check your connection and try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function savePrice(row: InventoryRow) {
+    const nextPrice = Number(draftPrice)
+    if (!Number.isFinite(nextPrice) || nextPrice <= 0 || nextPrice > 10_000_000) {
+      setNotice('Enter a price greater than zero and no more than PKR 10,000,000.')
+      return
+    }
+    setSavingId(row.variantId)
+    setNotice('')
+    try {
+      await api.put(`/api/manage/variants/${row.variantId}`, {
+        priceOverride: nextPrice,
+        stockQty: row.stockQty,
+        rowVersion: row.rowVersion,
+      })
+      setEditingPriceId(null)
+      setNotice(`Price updated for ${row.productName} · ${row.size} · ${row.color}.`)
+      await loadInventory()
+    } catch (requestError: any) {
+      setNotice(requestError?.response?.status === 409
+        ? 'This variant changed in another session. Refresh the inventory and try again.'
+        : 'Price could not be saved. Check the amount and try again.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  function stockBadge(quantity: number) {
+    if (quantity === 0) return <span className="inventory-badge inventory-badge-out">Out of stock</span>
+    if (quantity < 10) return <span className="inventory-badge inventory-badge-low">Low stock</span>
+    return <span className="inventory-badge inventory-badge-good">In stock</span>
+  }
+
+  function stockControls(row: InventoryRow) {
+    const isEditing = editingId === row.variantId
+    return <div className="inventory-stock-control">
+      {isEditing
+        ? <>
+            <input aria-label={`Stock quantity for ${row.sku}`} type="number" min="0" step="1" value={draftStock} onChange={event => setDraftStock(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void saveStock(row); if (event.key === 'Escape') setEditingId(null) }} autoFocus />
+            <IconButton label="Save stock" disabled={savingId === row.variantId} onClick={() => void saveStock(row)}><Icon name="check" /></IconButton>
+            <IconButton label="Cancel editing" onClick={() => setEditingId(null)}><Icon name="close" /></IconButton>
+          </>
+        : <>
+            <strong>{row.stockQty}</strong>
+            {stockBadge(row.stockQty)}
+            <IconButton label={`Edit stock for ${row.sku}`} onClick={() => beginEdit(row)}><Icon name="edit" /></IconButton>
+          </>}
+    </div>
+  }
+
+  function tableRows(items: InventoryRow[], compact = false) {
+    if (items.length === 0) return <tr><td className="inventory-empty" colSpan={compact ? 4 : 7}>{compact ? 'No low stock items. Nice work.' : 'No inventory matches these filters.'}</td></tr>
+    return items.map(row => <tr key={row.variantId} className={row.stockQty < 10 ? 'inventory-row-alert' : ''}>
+      {!compact && <td><div className="inventory-product"><InventoryThumbnail row={row} /><span><strong>{row.productName}</strong><small>{row.productCode} · {row.category}</small></span></div></td>}
+      <td>{compact && <span className="inventory-low-ident"><InventoryThumbnail row={row} /><span><span className="inventory-sku">{row.sku}</span><small>{row.productName} · {row.size} · {row.color}</small></span></span>}{!compact && <span className="inventory-sku">{row.sku}</span>}{compact && <small className="inventory-mobile-product">{row.productName} · {row.size} · {row.color}</small>}</td>
+      {!compact && <><td>{row.size}</td><td>{row.color}</td></>}
+      <td>{stockControls(row)}</td>
+      {!compact && <><td><div className="inventory-price-control">{editingPriceId === row.variantId
+        ? <><span>PKR</span><input aria-label={`Price for ${row.sku}`} type="number" min="0.01" max="10000000" step="0.01" value={draftPrice} onChange={event => setDraftPrice(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void savePrice(row); if (event.key === 'Escape') setEditingPriceId(null) }} autoFocus /><IconButton label="Save price" disabled={savingId === row.variantId} onClick={() => void savePrice(row)}><Icon name="check" /></IconButton><IconButton label="Cancel price editing" onClick={() => setEditingPriceId(null)}><Icon name="close" /></IconButton></>
+        : <><span>PKR {row.price.toLocaleString()}</span><IconButton label={`Edit price for ${row.sku}`} onClick={() => { setEditingPriceId(row.variantId); setDraftPrice(row.price.toFixed(2)); setNotice('') }}><Icon name="edit" /></IconButton></>}</div></td><td><span className={row.productActive && row.variantActive ? 'inventory-active' : 'inventory-inactive'}>{row.productActive && row.variantActive ? 'Active' : 'Paused'}</span></td></>}
+      {compact && <td>{row.stockQty === 0 ? 'Out' : `${row.stockQty} left`}</td>}
+    </tr>)
+  }
+
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
+
+  return <div className="inventory-workspace">
+    <div className="inventory-metrics">
+      <article><span>Tracked variants</span><strong>{summary?.variantCount ?? '—'}</strong><small>Across active catalog records</small></article>
+      <article><span>Units on hand</span><strong>{summary?.totalUnits.toLocaleString() ?? '—'}</strong><small>Total sellable stock</small></article>
+      <article className="inventory-metric-warn"><span>Running low</span><strong>{summary?.lowStockCount ?? '—'}</strong><small>1–9 units remaining</small></article>
+      <article className="inventory-metric-critical"><span>Out of stock</span><strong>{summary?.outOfStockCount ?? '—'}</strong><small>Needs replenishment</small></article>
+    </div>
+
+    <section className="inventory-low-panel">
+      <header className="inventory-section-head"><div><p className="eyebrow">REPLENISHMENT QUEUE</p><h2>Needs attention</h2><p>Low and unavailable variants, sorted by urgency.</p></div><span className="inventory-alert-count">{summary?.lowStockCount ?? 0} low · {summary?.outOfStockCount ?? 0} out</span></header>
+      <div className="inventory-table-wrap"><table className="inventory-table inventory-low-table"><thead><tr><th>SKU</th><th>Availability</th><th>Stock</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{tableRows(lowRows, true)}</tbody></table></div>
+    </section>
+
+    <section className="inventory-main-panel">
+      <header className="inventory-section-head inventory-main-head"><div><p className="eyebrow">STOCK LEDGER</p><h2>All inventory</h2><p>{totalCount.toLocaleString()} variants in this view</p></div><IconButton label="Refresh inventory" onClick={() => void loadInventory()}><Icon name="refresh" /></IconButton></header>
+      <div className="inventory-toolbar">
+        <form className="inventory-search" onSubmit={event => { event.preventDefault(); setPage(1); setSearch(searchText.trim()) }}><Icon name="search" /><input aria-label="Search inventory" placeholder="Search product, code, or SKU" value={searchText} onChange={event => setSearchText(event.target.value)} /><button type="submit">Search</button></form>
+        <select aria-label="Filter by category" value={categoryId} onChange={event => { setPage(1); setCategoryId(event.target.value) }}><option value="">All categories</option>{categories.map(category => <option key={category.categoryId} value={category.categoryId}>{category.name}</option>)}</select>
+        <select aria-label="Filter by stock level" value={stockFilter} onChange={event => { setPage(1); setStockFilter(event.target.value) }}><option value="all">All stock levels</option><option value="low">Low stock</option><option value="out">Out of stock</option><option value="healthy">Healthy stock</option></select>
+      </div>
+      {error && <p className="inventory-error" role="alert">{error}</p>}
+      {notice && <p className="inventory-notice" role="status">{notice}</p>}
+      <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Product</th><th>SKU</th><th>Size</th><th>Color</th><th>Stock left</th><th>Price</th><th>Status</th></tr></thead><tbody>{loading ? <tr><td className="inventory-empty" colSpan={7}>Loading stock ledger…</td></tr> : tableRows(rows)}</tbody></table></div>
+      <footer className="inventory-pagination"><span>Showing {totalCount ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, totalCount)} of {totalCount}</span><div><IconButton label="Previous page" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}><Icon name="left" /></IconButton><span>Page {page} of {pageCount}</span><IconButton label="Next page" disabled={page >= pageCount || loading} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><Icon name="right" /></IconButton></div></footer>
+    </section>
+  </div>
+}
+
+function IconButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: ReactNode }) {
+  return <button className="inventory-icon-button" type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}>{children}</button>
+}
+
+function InventoryThumbnail({ row }: { row: InventoryRow }) {
+  return <span className="inventory-product-mark"><img src={assetUrl(row.imageUrl) ?? ''} alt={row.productName} loading="lazy" /></span>
+}
+
+function Icon({ name }: { name: 'check' | 'close' | 'edit' | 'refresh' | 'search' | 'left' | 'right' | 'eye' }) {
+  const paths: Record<typeof name, ReactNode> = {
+    check: <path d="m5 12 4 4L19 6" />,
+    close: <path d="m6 6 12 12M18 6 6 18" />,
+    edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+    refresh: <><path d="M20 7v5h-5" /><path d="M4 17v-5h5" /><path d="M5.6 9A7 7 0 0 1 17.5 6L20 12M4 12l2.5 6A7 7 0 0 0 18.4 15" /></>,
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+    left: <path d="m15 18-6-6 6-6" />,
+    right: <path d="m9 18 6-6-6-6" />,
+    eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>,
+  }
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
+}
+
+
+type ManagedOrder = { orderId: number; orderDate: string; name: string; totalAmount: number; customer: string; items: number }
+type OrderDetail = {
+  orderId: number; orderDate: string; status: string; totalAmount: number
+  customer: { userId: number; fullName: string; email: string }
+  shipName: string; shipLine1: string; shipLine2?: string | null; shipCity: string; shipPostalCode: string; shipCountry: string
+  items: { name: string; quantity: number; unitPrice: number; lineTotal: number }[]
+  payments: { method: string; status: string; amount: number; transactionRef?: string | null; paidAt?: string | null }[]
+}
+type OrderDashboard = { ordersToday: number; ordersByStatus: { status: string; count: number }[] }
+
+const nextOrderStatuses: Record<string, string[]> = {
+  Pending: ['Paid', 'Cancelled'],
+  Paid: ['Shipped', 'Cancelled'],
+  Shipped: ['Delivered'],
+}
+const orderStatusFilters = ['All statuses', 'Pending', 'Paid', 'Shipped', 'Delivered', 'Cancelled']
+
+function OrderWorkspace() {
+  const [orders, setOrders] = useState<ManagedOrder[]>([])
+  const [dashboard, setDashboard] = useState<OrderDashboard | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [status, setStatus] = useState('')
+  const [searchText, setSearchText] = useState('')
+  const [search, setSearch] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [detail, setDetail] = useState<OrderDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busyOrder, setBusyOrder] = useState<number | null>(null)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const pageSize = 15
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const params: Record<string, string | number> = { page, pageSize }
+      if (status) params.status = status
+      if (from) params.from = from
+      if (to) params.to = to
+      if (/^\d+$/.test(search)) params.orderId = Number(search)
+      else if (search) params.email = search
+      const [list, stats] = await Promise.all([
+        api.get('/api/manage/orders', { params }),
+        api.get<OrderDashboard>('/api/manage/dashboard'),
+      ])
+      setOrders(list.data.items)
+      setTotalCount(list.data.totalCount)
+      setDashboard(stats.data)
+    } catch {
+      setError('Orders could not be loaded. Refresh or sign in again and retry.')
+    } finally {
+      setLoading(false)
+    }
+  }, [page, pageSize, status, search, from, to])
+
+  useEffect(() => { void loadOrders() }, [loadOrders])
+
+  async function updateStatus(order: ManagedOrder, nextStatus: string) {
+    setBusyOrder(order.orderId)
+    setNotice('')
+    try {
+      await api.patch(`/api/manage/orders/${order.orderId}/status`, { status: nextStatus })
+      setNotice(`Order #${order.orderId} moved to ${nextStatus}.`)
+      await loadOrders()
+    } catch (requestError: any) {
+      setError(requestError?.response?.status === 409
+        ? 'That status change is no longer available. Refresh the order list.'
+        : `Order #${order.orderId} could not be updated.`)
+    } finally {
+      setBusyOrder(null)
+    }
+  }
+
+  async function openOrder(orderId: number) {
+    try {
+      const response = await api.get<OrderDetail>(`/api/manage/orders/${orderId}`)
+      setDetail(response.data)
+    } catch {
+      setError(`Order #${orderId} details could not be loaded.`)
+    }
+  }
+
+  const statusCount = (name: string) => dashboard?.ordersByStatus.find(item => item.status === name)?.count ?? 0
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
+  const money = (value: number) => `PKR ${value.toLocaleString()}`
+
+  return <section className="orders-workspace">
+    <header className="inventory-section-head orders-head"><div><p className="eyebrow">FULFILMENT DESK</p><h2>Order status</h2><p>Review incoming orders and move each one through fulfilment.</p></div><IconButton label="Refresh orders" onClick={() => void loadOrders()}><Icon name="refresh" /></IconButton></header>
+    <div className="orders-status-cards">
+      <article><span>Placed today</span><strong>{dashboard?.ordersToday ?? '—'}</strong></article>
+      <article className="orders-pending"><span>Pending</span><strong>{statusCount('Pending')}</strong></article>
+      <article><span>Paid</span><strong>{statusCount('Paid')}</strong></article>
+      <article><span>Shipped</span><strong>{statusCount('Shipped')}</strong></article>
+      <article className="orders-complete"><span>Delivered</span><strong>{statusCount('Delivered')}</strong></article>
+    </div>
+    <div className="orders-toolbar">
+      <form className="inventory-search" onSubmit={event => { event.preventDefault(); setPage(1); setSearch(searchText.trim()) }}><Icon name="search" /><input aria-label="Search orders" placeholder="Order number or customer email" value={searchText} onChange={event => setSearchText(event.target.value)} /><button type="submit">Search</button></form>
+      <select aria-label="Filter orders by status" value={status} onChange={event => { setPage(1); setStatus(event.target.value) }}>{orderStatusFilters.map((item, index) => <option key={item} value={index === 0 ? '' : item}>{item}</option>)}</select>
+      <label>From <input type="date" value={from} onChange={event => { setPage(1); setFrom(event.target.value) }} /></label>
+      <label>To <input type="date" value={to} onChange={event => { setPage(1); setTo(event.target.value) }} /></label>
+    </div>
+    {error && <p className="inventory-error" role="alert">{error}</p>}
+    {notice && <p className="inventory-notice" role="status">{notice}</p>}
+    <div className="inventory-table-wrap"><table className="inventory-table orders-table"><thead><tr><th>Order</th><th>Customer</th><th>Placed</th><th>Items</th><th>Total</th><th>Status</th><th>Next step</th><th><span className="sr-only">Details</span></th></tr></thead><tbody>
+      {loading ? <tr><td className="inventory-empty" colSpan={8}>Loading orders…</td></tr> : orders.length === 0 ? <tr><td className="inventory-empty" colSpan={8}>No orders match these filters.</td></tr> : orders.map(order => <tr key={order.orderId}>
+        <td><strong className="orders-id">#{order.orderId}</strong></td>
+        <td className="orders-customer">{order.customer}</td>
+        <td>{new Date(order.orderDate).toLocaleDateString()}</td>
+        <td>{order.items}</td>
+        <td>{money(order.totalAmount)}</td>
+        <td><span className={`order-status-chip order-status-${order.name.toLowerCase()}`}>{order.name}</span></td>
+        <td>{(nextOrderStatuses[order.name] ?? []).length > 0
+          ? <select aria-label={`Update order ${order.orderId} status`} defaultValue="" disabled={busyOrder === order.orderId} onChange={event => { if (event.target.value) void updateStatus(order, event.target.value) }}><option value="">Choose status…</option>{nextOrderStatuses[order.name].map(next => <option key={next} value={next}>{next}</option>)}</select>
+          : <span className="orders-no-action">—</span>}</td>
+        <td><IconButton label={`View order ${order.orderId}`} onClick={() => void openOrder(order.orderId)}><Icon name="eye" /></IconButton></td>
+      </tr>)}
+    </tbody></table></div>
+    <footer className="inventory-pagination"><span>{totalCount.toLocaleString()} orders</span><div><IconButton label="Previous orders page" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}><Icon name="left" /></IconButton><span>Page {page} of {pageCount}</span><IconButton label="Next orders page" disabled={page >= pageCount || loading} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><Icon name="right" /></IconButton></div></footer>
+    {detail && <div className="order-detail-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setDetail(null) }}><section className="order-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="order-detail-title"><header><div><p className="eyebrow">ORDER DETAILS</p><h3 id="order-detail-title">Order #{detail.orderId}</h3></div><IconButton label="Close order details" onClick={() => setDetail(null)}><Icon name="close" /></IconButton></header><div className="order-detail-summary"><span className={`order-status-chip order-status-${detail.status.toLowerCase()}`}>{detail.status}</span><span>{new Date(detail.orderDate).toLocaleString()}</span><strong>{money(detail.totalAmount)}</strong></div><div className="order-detail-columns"><div><h4>Customer</h4><strong>{detail.customer.fullName}</strong><span>{detail.customer.email}</span></div><div><h4>Ship to</h4><strong>{detail.shipName}</strong><span>{detail.shipLine1}{detail.shipLine2 ? `, ${detail.shipLine2}` : ''}</span><span>{detail.shipCity}, {detail.shipPostalCode}</span><span>{detail.shipCountry}</span></div></div><h4 className="order-detail-subhead">Items</h4><div className="order-detail-lines">{detail.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name}<small>{item.quantity} × {money(item.unitPrice)}</small></span><strong>{money(item.lineTotal)}</strong></div>)}</div><h4 className="order-detail-subhead">Payment</h4>{detail.payments.map((payment, index) => <div className="order-payment-line" key={`${payment.method}-${index}`}><span>{payment.method} · {payment.status}</span><strong>{money(payment.amount)}</strong></div>)}</section></div>}
+  </section>
+}
+
+function AdminTools({ dashboard, users, currentUserId, error, reload }: { dashboard: AdminDashboard | null; users: AdminUser[]; currentUserId?: number; error: string; reload: () => Promise<void> }) {
+  return <details className="manage-admin-tools"><summary><span><strong>Admin reports &amp; team</strong><small>Revenue overview and staff account controls</small></span><span className="manage-summary-mark">+</span></summary><div className="manage-admin-content">
+    {error && <p className="inventory-error" role="alert">{error}</p>}
+    <section><h2>Revenue overview</h2><div className="orders-status-cards admin-revenue-cards"><article><span>Today</span><strong>PKR {(dashboard?.revenue?.today ?? 0).toLocaleString()}</strong></article><article><span>Last 7 days</span><strong>PKR {(dashboard?.revenue?.last7 ?? 0).toLocaleString()}</strong></article><article><span>Last 30 days</span><strong>PKR {(dashboard?.revenue?.last30 ?? 0).toLocaleString()}</strong></article></div><h3>Top products</h3><ol className="admin-top-products">{dashboard?.topProducts?.map(product => <li key={product.productId}><span>{product.name}</span><strong>{product.units} sold</strong></li>)}</ol></section>
+    <section><h2>Team accounts</h2><form className="admin-create-user" onSubmit={async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); try { const { data } = await api.post('/api/admin/users', { fullName: form.get('fullName'), email: form.get('email'), role: form.get('role') }); window.alert(`Initial password (copy now): ${data.initialPassword}`); event.currentTarget.reset(); await reload() } catch { window.alert('Staff account could not be created.') } }}><input name="fullName" placeholder="Full name" required /><input name="email" type="email" placeholder="Email" required /><select name="role"><option>Manager</option><option>Admin</option></select><button type="submit">Create staff account</button></form><div className="admin-user-list">{users.map(person => <article key={person.userId}><span><strong>{person.fullName}</strong><small>{person.email} · {person.role}{person.isDeleted ? ' · Deleted' : ''}</small></span><select disabled={person.isDeleted} value={person.role} aria-label={`Role for ${person.fullName}`} onChange={async event => { await api.patch(`/api/admin/users/${person.userId}/role`, { role: event.target.value }); await reload() }}><option>Customer</option><option>Manager</option><option>Admin</option></select><button type="button" disabled={person.userId === currentUserId || person.isDeleted} onClick={async () => { await api.patch(`/api/admin/users/${person.userId}/active`, { isActive: !person.isActive }); await reload() }}>{person.isActive ? 'Disable' : 'Enable'}</button><button type="button" disabled={person.userId === currentUserId} onClick={async () => { if (person.isDeleted) await api.patch(`/api/admin/users/${person.userId}/deleted`, { isDeleted: false }); else if (window.confirm(`Soft-delete ${person.fullName}?`)) await api.patch(`/api/admin/users/${person.userId}/deleted`, { isDeleted: true }); await reload() }}>{person.isDeleted ? 'Restore' : 'Delete'}</button></article>)}</div></section>
+  </div></details>
 }

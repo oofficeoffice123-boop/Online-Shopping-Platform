@@ -30,6 +30,74 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
             p.Category, p.BasePrice, p.IsActive, images = p.Images.OrderBy(i => i.SortOrder).Select(i => new { i.ImageId, i.Url, i.IsPrimary, i.SortOrder }) }), page, pageSize, totalCount = total });
     }
 
+    [HttpGet("inventory"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> Inventory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        string? search = null,
+        int? categoryId = null,
+        string? stock = null,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var inventory = db.ProductVariants.AsNoTracking()
+            .Where(variant => !variant.IsDeleted && !variant.Product.IsDeleted);
+        var summary = new
+        {
+            variantCount = await inventory.CountAsync(ct),
+            totalUnits = await inventory.SumAsync(variant => (int?)variant.StockQty, ct) ?? 0,
+            lowStockCount = await inventory.CountAsync(variant => variant.StockQty >= 1 && variant.StockQty < 10, ct),
+            outOfStockCount = await inventory.CountAsync(variant => variant.StockQty == 0, ct)
+        };
+
+        var query = inventory;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(variant => variant.Product.Name.Contains(term) ||
+                variant.Product.ProductCode.Contains(term) || variant.SKU.Contains(term));
+        }
+        if (categoryId.HasValue)
+            query = query.Where(variant => variant.Product.CategoryId == categoryId.Value);
+        query = stock?.ToLowerInvariant() switch
+        {
+            "low" => query.Where(variant => variant.StockQty >= 1 && variant.StockQty < 10),
+            "out" => query.Where(variant => variant.StockQty == 0),
+            "healthy" => query.Where(variant => variant.StockQty >= 10),
+            _ => query
+        };
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(variant => variant.StockQty)
+            .ThenBy(variant => variant.Product.Name)
+            .ThenBy(variant => variant.SKU)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(variant => new
+            {
+                variant.VariantId,
+                variant.ProductId,
+                productCode = variant.Product.ProductCode,
+                productName = variant.Product.Name,
+                category = variant.Product.Category.Name,
+                variant.SKU,
+                size = variant.Size.Label,
+                color = variant.Color.Name,
+                variant.StockQty,
+                price = variant.PriceOverride ?? variant.Product.BasePrice,
+                productActive = variant.Product.IsActive,
+                variantActive = variant.IsActive,
+                imageUrl = variant.Product.Images.OrderBy(image => image.SortOrder).Select(image => image.Url).FirstOrDefault(),
+                rowVersion = Convert.ToBase64String(variant.RowVersion)
+            })
+            .ToListAsync(ct);
+
+        return Ok(new { items, page, pageSize, totalCount, summary });
+    }
+
     [HttpPost("products"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> CreateProduct(ProductRequest r, [FromServices] IValidator<ProductRequest> validator, CancellationToken ct)
     {

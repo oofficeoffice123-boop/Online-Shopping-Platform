@@ -313,16 +313,17 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
     {
         var order = await db.Orders.AsNoTracking().Where(item => item.OrderId == orderId && item.UserId == userId)
             .Include(item => item.Status)
+            .Include(item => item.StatusHistory)
             .Include(item => item.Items).ThenInclude(item => item.Variant).ThenInclude(variant => variant.Product).ThenInclude(product => product.Images)
             .Include(item => item.Items).ThenInclude(item => item.Variant).ThenInclude(variant => variant.Size)
             .Include(item => item.Items).ThenInclude(item => item.Variant).ThenInclude(variant => variant.Color)
-            .Include(item => item.Payments)
             .SingleOrDefaultAsync(cancellationToken);
         if (order is null)
             return null;
 
         var items = order.Items.OrderBy(item => item.OrderItemId).Select(item => new OrderItemDto(
             item.VariantId,
+            item.Variant.ProductId,
             item.Variant.Product.Name,
             item.Variant.Size.Label,
             item.Variant.Color.Name,
@@ -331,10 +332,10 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
             item.Quantity,
             item.UnitPrice,
             Money(item.UnitPrice * item.Quantity))).ToArray();
-        var payments = order.Payments.OrderBy(item => item.PaymentId)
-            .Select(item => new OrderPaymentDto(item.Method, item.Status, item.Amount, item.TransactionRef, item.PaidAt)).ToArray();
-        return new OrderDetailsDto(order.OrderId, order.Status.Name, order.OrderDate, order.TotalAmount,
-            order.ShipName, order.ShipLine1, order.ShipLine2, order.ShipCity, order.ShipPostalCode, order.ShipCountry, items, payments);
+        var deliveredAt = order.StatusHistory.Where(item => item.ToStatus == "Delivered")
+            .OrderByDescending(item => item.ChangedAt).Select(item => (DateTime?)item.ChangedAt).FirstOrDefault();
+        return new OrderDetailsDto(order.OrderId, order.Status.Name, order.OrderDate, deliveredAt, order.TotalAmount,
+            order.ShipName, order.ShipLine1, order.ShipLine2, order.ShipCity, order.ShipPostalCode, order.ShipCountry, items);
     }
 
     public async Task<CommerceResult<OrderSummaryDto>> CancelOrderAsync(int userId, int orderId, CancellationToken cancellationToken = default)
