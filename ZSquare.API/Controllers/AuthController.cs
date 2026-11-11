@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using ZSquare.Application.Auth;
 using ZSquare.API.Security;
+using ZSquare.Domain;
 
 namespace ZSquare.API.Controllers;
 
@@ -114,9 +115,8 @@ public sealed class AuthController(
         if (user is null || !hasher.Verify(user, request.CurrentPassword))
             return Unauthorized(new ProblemDetails { Status = 401, Title = "Current password is incorrect." });
         user.PasswordHash = hasher.Hash(user, request.NewPassword);
-        user.MustChangePassword = false;
         var tokens = await db.RefreshTokens.Where(t => t.UserId == user.UserId && t.RevokedAt == null).ToListAsync(cancellationToken);
-        foreach (var token in tokens) token.RevokedAt = DateTime.UtcNow;
+        foreach (var token in tokens) token.RevokedAt = PakistanClock.Now;
         await db.SaveChangesAsync(cancellationToken);
         ClearRefreshCookie();
         return NoContent();

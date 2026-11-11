@@ -136,7 +136,7 @@ export default function StorePage() {
           </article>)}
         </div>}
       </section>}
-      <footer>SHOP EASE <span>·</span> Made for the way you wear it.</footer>
+      <footer>Z SQUARE <span>·</span> Made for the way you wear it.</footer>
     </main>
   )
 }

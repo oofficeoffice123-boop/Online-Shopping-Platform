@@ -44,10 +44,6 @@ export default function App() {
     }
   }, [user])
 
-  useEffect(() => {
-    if (user?.mustChangePassword) navigate('/manage', { replace: true })
-  }, [user, navigate])
-
   async function signOut() {
     await logout()
     navigate('/', { replace: true })

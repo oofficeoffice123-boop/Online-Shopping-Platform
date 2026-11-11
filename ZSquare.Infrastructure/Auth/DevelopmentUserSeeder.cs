@@ -15,9 +15,9 @@ public sealed class DevelopmentUserSeeder(
 {
     private static readonly (string Role, string Name, string Email, string PasswordKey)[] DevelopmentUsers =
     [
-        (Roles.Admin, "Z SQUARE Admin", "admin@shopease.local", "Auth:SeedPasswords:Admin"),
-        (Roles.Manager, "Z SQUARE Manager", "manager@shopease.local", "Auth:SeedPasswords:Manager"),
-        (Roles.Customer, "Z SQUARE Customer", "customer@shopease.local", "Auth:SeedPasswords:Customer")
+        (Roles.Admin, "Z SQUARE Admin", "admin@zsquare.local", "Auth:SeedPasswords:Admin"),
+        (Roles.Manager, "Z SQUARE Manager", "manager@zsquare.local", "Auth:SeedPasswords:Manager"),
+        (Roles.Customer, "Z SQUARE Customer", "customer@zsquare.local", "Auth:SeedPasswords:Customer")
     ];
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -32,8 +32,18 @@ public sealed class DevelopmentUserSeeder(
         var roles = await db.Roles.ToDictionaryAsync(role => role.Name, cancellationToken);
         foreach (var (roleName, fullName, email, passwordKey) in DevelopmentUsers)
         {
-            if (await db.Users.AnyAsync(user => user.Email == email, cancellationToken))
+            var legacyEmail = email.Replace("@zsquare.local", "@shopease.local", StringComparison.Ordinal);
+            var existingUser = await db.Users.SingleOrDefaultAsync(user => user.Email == email, cancellationToken)
+                ?? await db.Users.SingleOrDefaultAsync(user => user.Email == legacyEmail, cancellationToken);
+            if (existingUser is not null)
+            {
+                if (existingUser.Email != email || existingUser.FullName != fullName)
+                {
+                    existingUser.Email = email;
+                    existingUser.FullName = fullName;
+                }
                 continue;
+            }
 
             var password = configuration[passwordKey];
             if (string.IsNullOrEmpty(password))
@@ -49,7 +59,7 @@ public sealed class DevelopmentUserSeeder(
                 RoleId = role.RoleId,
                 Role = role,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanClock.Now
             };
             user.PasswordHash = passwordHasher.Hash(user, password);
             db.Users.Add(user);

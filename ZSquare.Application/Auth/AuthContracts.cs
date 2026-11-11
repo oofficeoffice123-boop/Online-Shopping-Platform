@@ -19,7 +19,7 @@ public sealed class LoginRequest
 
 public sealed record RefreshRequest(string? Token);
 
-public sealed record AuthUserSummary(int UserId, string FullName, string Email, string Role, bool MustChangePassword);
+public sealed record AuthUserSummary(int UserId, string FullName, string Email, string Role);
 
 public sealed record AuthResponse(
     string AccessToken,

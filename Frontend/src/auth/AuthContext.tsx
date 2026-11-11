@@ -2,7 +2,7 @@ import axios from 'axios'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, setAccessToken as setApiAccessToken, setAuthInterceptors } from './apiClient'
 
-export type AuthUser = { userId: number; fullName: string; email: string; role: 'Customer' | 'Manager' | 'Admin'; mustChangePassword?: boolean }
+export type AuthUser = { userId: number; fullName: string; email: string; role: 'Customer' | 'Manager' | 'Admin' }
 type AuthResult = { accessToken: string; accessTokenExpiresAt: string; user: AuthUser }
 type Credentials = { email: string; password: string }
 type Registration = Credentials & { fullName: string; phone?: string }

@@ -21,7 +21,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.HasKey(x => x.UserId);
         b.HasIndex(x => x.Email).IsUnique();
         b.Property(x => x.Email).HasMaxLength(256).IsRequired();
-        b.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+        b.Property(x => x.FullName).HasColumnName("Name").HasMaxLength(200).IsRequired();
         b.Property(x => x.Phone).HasMaxLength(30);
         b.Property(x => x.PasswordHash).IsRequired();
         b.HasOne(x => x.Role).WithMany(x => x.Users).HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Restrict);
@@ -121,7 +121,6 @@ public sealed class ColorConfiguration : IEntityTypeConfiguration<Color>
     {
         b.HasKey(x => x.ColorId);
         b.Property(x => x.Name).HasMaxLength(100).IsRequired();
-        b.Property(x => x.HexCode).HasMaxLength(7);
         b.HasIndex(x => x.Name).IsUnique();
     }
 }
@@ -230,6 +229,7 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.Property(x => x.TransactionRef).HasMaxLength(200);
         b.Property(x => x.Amount).HasPrecision(10, 2);
         b.ToTable(t => t.HasCheckConstraint("CK_Payments_Amount", "[Amount] >= 0"));
+        b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Order).WithMany(x => x.Payments).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
     }
 }

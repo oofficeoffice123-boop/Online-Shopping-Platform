@@ -134,7 +134,7 @@ public sealed class KhaadiImporter(AppDbContext db, ILogger<KhaadiImporter> logg
                 Description = Truncate(row.Description?.Trim(), 4000),
                 BasePrice = row.Price,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = PakistanClock.Now
             };
 
             foreach (var sizeLabel in productSizes)

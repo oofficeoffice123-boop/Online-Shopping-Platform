@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ZSquare.Application.Auth;
+using ZSquare.Domain;
 
 namespace ZSquare.Infrastructure.Auth;
 
@@ -19,7 +20,7 @@ public sealed class RefreshTokenCleanupService(
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IRefreshTokenRepository>();
-                var cutoff = DateTime.UtcNow.AddDays(-30);
+                var cutoff = PakistanClock.Now.AddDays(-30);
                 var deleted = await repository.DeleteExpiredBeforeAsync(cutoff, stoppingToken);
                 if (deleted > 0)
                     logger.LogInformation("Deleted {Count} refresh tokens expired more than 30 days ago.", deleted);

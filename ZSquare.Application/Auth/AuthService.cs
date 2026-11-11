@@ -25,7 +25,7 @@ public sealed class AuthService(
             RoleId = customerRole.RoleId,
             Role = customerRole,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = PakistanClock.Now
         };
         user.PasswordHash = passwordHasher.Hash(user, request.Password);
         await users.AddAsync(user, cancellationToken);
@@ -35,7 +35,7 @@ public sealed class AuthService(
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await users.FindByEmailAsync(NormalizeEmail(request.Email), cancellationToken);
-        if (user is null || !user.IsActive || !passwordHasher.Verify(user, request.Password))
+        if (user is null || user.IsDeleted || !user.IsActive || !passwordHasher.Verify(user, request.Password))
             throw new AuthException(AuthException.InvalidCredentialsMessage);
 
         return await CreateAuthResponseAsync(user, cancellationToken);
@@ -62,7 +62,7 @@ public sealed class AuthService(
     public async Task<MeResponse> GetCurrentUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await users.GetByIdAsync(userId, cancellationToken);
-        if (user is null || !user.IsActive)
+        if (user is null || user.IsDeleted || !user.IsActive)
             throw new AuthException("The account is not available.");
 
         return new MeResponse(user.UserId, user.FullName, user.Email, user.Role.Name);
@@ -81,7 +81,7 @@ public sealed class AuthService(
     }
 
     private static AuthUserSummary ToSummary(User user) =>
-        new(user.UserId, user.FullName, user.Email, user.Role.Name, user.MustChangePassword);
+        new(user.UserId, user.FullName, user.Email, user.Role.Name);
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
 }

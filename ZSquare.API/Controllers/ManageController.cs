@@ -48,13 +48,13 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
         var p = await db.Products.FindAsync([id], ct); if (p == null) return NotFound();
         if (await db.Products.AnyAsync(x => x.ProductId != id && x.ProductCode == r.ProductCode.Trim(), ct)) return ConflictProblem("ProductCode is already in use.");
         if (!await db.Categories.AnyAsync(c => c.CategoryId == r.CategoryId, ct)) return ValidationProblem(new Dictionary<string,string[]> { ["categoryId"] = ["Category does not exist."] });
-        p.ProductCode = r.ProductCode.Trim(); p.Name = r.Name.Trim(); p.Description = r.Description?.Trim(); p.CategoryId = r.CategoryId; p.BasePrice = r.BasePrice;
+        p.ProductCode = r.ProductCode.Trim(); p.Name = r.Name.Trim(); p.Description = r.Description?.Trim(); p.CategoryId = r.CategoryId; p.BasePrice = r.BasePrice; p.UpdatedAt = PakistanClock.Now; p.UpdatedBy = User.GetUserId();
         await db.SaveChangesAsync(ct); Log("product.update", id); return Ok(ProductDto(p));
     }
 
     [HttpPatch("products/{id:int}/active"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> SetProductActive(int id, ActiveRequest r, [FromServices] IValidator<ActiveRequest> validator, CancellationToken ct)
-    { var errors = await Validate(validator, r, ct); if(errors!=null)return errors; var p=await db.Products.FindAsync([id],ct); if(p==null)return NotFound(); p.IsActive=r.IsActive; await db.SaveChangesAsync(ct); Log("product.active",id); return Ok(ProductDto(p)); }
+    { var errors = await Validate(validator, r, ct); if(errors!=null)return errors; var p=await db.Products.FindAsync([id],ct); if(p==null)return NotFound(); p.IsActive=r.IsActive; p.UpdatedAt=PakistanClock.Now; p.UpdatedBy=User.GetUserId(); await db.SaveChangesAsync(ct); Log("product.active",id); return Ok(ProductDto(p)); }
 
     [HttpDelete("products/{id:int}"), Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeleteProduct(int id, CancellationToken ct)
@@ -84,14 +84,14 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
 
     [HttpPut("variants/{id:int}"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> UpdateVariant(int id, VariantUpdateRequest r, [FromServices] IValidator<VariantUpdateRequest> validator, CancellationToken ct)
-    { var errors=await Validate(validator,r,ct);if(errors!=null)return errors;var v=await db.ProductVariants.FindAsync([id],ct);if(v==null)return NotFound();if(!TrySetVersion(v,r.RowVersion))return ConflictProblem("Invalid or stale variant RowVersion. Refresh and retry.");v.PriceOverride=r.PriceOverride;v.StockQty=r.StockQty;try{await db.SaveChangesAsync(ct);}catch(DbUpdateConcurrencyException){return ConflictProblem("Variant changed concurrently. Refresh and retry.");}Log("variant.update",id);return Ok(VariantDto(v)); }
+    { var errors=await Validate(validator,r,ct);if(errors!=null)return errors;var v=await db.ProductVariants.FindAsync([id],ct);if(v==null)return NotFound();if(!TrySetVersion(v,r.RowVersion))return ConflictProblem("Invalid or stale variant RowVersion. Refresh and retry.");v.PriceOverride=r.PriceOverride;v.StockQty=r.StockQty;v.UpdatedAt=PakistanClock.Now;v.UpdatedBy=User.GetUserId();try{await db.SaveChangesAsync(ct);}catch(DbUpdateConcurrencyException){return ConflictProblem("Variant changed concurrently. Refresh and retry.");}Log("variant.update",id);return Ok(VariantDto(v)); }
 
     [HttpDelete("variants/{id:int}"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> DeleteVariant(int id,CancellationToken ct){var v=await db.ProductVariants.FindAsync([id],ct);if(v==null)return NotFound();if(await db.OrderItems.AnyAsync(i=>i.VariantId==id,ct))return ConflictProblem("This variant appears in an order. Set its stock to 0 instead.");db.ProductVariants.Remove(v);await db.SaveChangesAsync(ct);Log("variant.delete",id);return NoContent();}
 
     [HttpPatch("variants/{id:int}/stock"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> Stock(int id, StockRequest r, [FromServices] IValidator<StockRequest> validator, CancellationToken ct)
-    { var errors=await Validate(validator,r,ct);if(errors!=null)return errors;var v=await db.ProductVariants.FindAsync([id],ct);if(v==null)return NotFound();if(!TrySetVersion(v,r.RowVersion))return ConflictProblem("Invalid or stale variant RowVersion. Refresh and retry.");var next=r.Set??(long)v.StockQty+r.Delta!.Value;if(next<0||next>int.MaxValue)return ConflictProblem("Stock adjustment would result in an invalid quantity.");v.StockQty=(int)next;try{await db.SaveChangesAsync(ct);}catch(DbUpdateConcurrencyException){return ConflictProblem("Stock changed concurrently. Refresh and retry.");}Log("variant.stock",id);return Ok(VariantDto(v)); }
+    { var errors=await Validate(validator,r,ct);if(errors!=null)return errors;var v=await db.ProductVariants.FindAsync([id],ct);if(v==null)return NotFound();if(!TrySetVersion(v,r.RowVersion))return ConflictProblem("Invalid or stale variant RowVersion. Refresh and retry.");var next=r.Set??(long)v.StockQty+r.Delta!.Value;if(next<0||next>int.MaxValue)return ConflictProblem("Stock adjustment would result in an invalid quantity.");v.StockQty=(int)next;v.UpdatedAt=PakistanClock.Now;v.UpdatedBy=User.GetUserId();try{await db.SaveChangesAsync(ct);}catch(DbUpdateConcurrencyException){return ConflictProblem("Stock changed concurrently. Refresh and retry.");}Log("variant.stock",id);return Ok(VariantDto(v)); }
 
     [HttpGet("orders"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> Orders([FromQuery]int page=1,[FromQuery]int pageSize=20,string? status=null,DateTime? from=null,DateTime? to=null,int? orderId=null,string? email=null,CancellationToken ct=default)
@@ -112,20 +112,20 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
         var target=await db.OrderStatuses.SingleOrDefaultAsync(x=>x.Name==r.Status,ct);if(target==null)return ValidationProblem(new Dictionary<string,string[]>{{"status",["Unknown status."]}});
         var from=o.Status.Name;o.Status=target;o.StatusId=target.StatusId;
         if(target.Name=="Cancelled")CustomerCommerceService.ApplyCancellation(o,target);
-        if(target.Name=="Delivered")foreach(var p in o.Payments.Where(p=>p.Method=="CashOnDelivery")){p.Status="Succeeded";p.PaidAt=DateTime.UtcNow;}
-        db.OrderStatusHistory.Add(new OrderStatusHistory{OrderId=id,FromStatus=from,ToStatus=target.Name,ChangedByUserId=User.GetUserId(),ChangedAt=DateTime.UtcNow});
+        if(target.Name=="Delivered")foreach(var p in o.Payments.Where(p=>p.Method=="CashOnDelivery")){p.Status="Succeeded";p.PaidAt=PakistanClock.Now;p.UpdatedAt=PakistanClock.Now;p.UpdatedBy=User.GetUserId();}
+        db.OrderStatusHistory.Add(new OrderStatusHistory{OrderId=id,FromStatus=from,ToStatus=target.Name,ChangedByUserId=User.GetUserId(),ChangedAt=PakistanClock.Now});
         try{await db.SaveChangesAsync(ct);await tx.CommitAsync(ct);}catch(DbUpdateConcurrencyException){return ConflictProblem("Order or inventory changed concurrently. Refresh and retry.");}
         Log("order.status",id);return Ok(new{id,status=target.Name,allowedNextStatuses=Allowed(target.Name)});
     }
 
     [HttpGet("dashboard"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> Dashboard(CancellationToken ct)
-    {var today=DateTime.UtcNow.Date;var byStatus=await db.Orders.AsNoTracking().GroupBy(o=>o.Status.Name).Select(g=>new{status=g.Key,count=g.Count()}).ToListAsync(ct);var recent=await db.Orders.AsNoTracking().OrderByDescending(o=>o.OrderDate).Take(10).Select(o=>new{o.OrderId,o.OrderDate,status=o.Status.Name,o.TotalAmount,customer=o.User.Email}).ToListAsync(ct);var low=await db.ProductVariants.AsNoTracking().Where(v=>v.StockQty<=5).OrderBy(v=>v.StockQty).Take(100).Select(v=>new{v.VariantId,v.SKU,v.StockQty,product=v.Product.Name,size=v.Size.Label,color=v.Color.Name}).ToListAsync(ct);return Ok(new{ordersByStatus=byStatus,ordersToday=await db.Orders.CountAsync(o=>o.OrderDate>=today,ct),lowStockVariants=low,recentOrders=recent});}
+    {var today=PakistanClock.Now.Date;var byStatus=await db.Orders.AsNoTracking().GroupBy(o=>o.Status.Name).Select(g=>new{status=g.Key,count=g.Count()}).ToListAsync(ct);var recent=await db.Orders.AsNoTracking().OrderByDescending(o=>o.OrderDate).Take(10).Select(o=>new{o.OrderId,o.OrderDate,status=o.Status.Name,o.TotalAmount,customer=o.User.Email}).ToListAsync(ct);var low=await db.ProductVariants.AsNoTracking().Where(v=>v.StockQty<=5).OrderBy(v=>v.StockQty).Take(100).Select(v=>new{v.VariantId,v.SKU,v.StockQty,product=v.Product.Name,size=v.Size.Label,color=v.Color.Name}).ToListAsync(ct);return Ok(new{ordersByStatus=byStatus,ordersToday=await db.Orders.CountAsync(o=>o.OrderDate>=today,ct),lowStockVariants=low,recentOrders=recent});}
 
     [HttpGet("~/api/admin/dashboard"), Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminDashboard(CancellationToken ct)
     {
-        var today=DateTime.UtcNow.Date;var start=today.AddDays(-29);
+        var today=PakistanClock.Now.Date;var start=today.AddDays(-29);
         var byStatus=await db.Orders.AsNoTracking().GroupBy(o=>o.Status.Name).Select(g=>new{status=g.Key,count=g.Count()}).ToListAsync(ct);
         var todayCount=await db.Orders.CountAsync(o=>o.OrderDate>=today,ct);
         var low=await db.ProductVariants.AsNoTracking().Where(v=>v.StockQty<=5).OrderBy(v=>v.StockQty).Take(100).Select(v=>new{v.VariantId,v.SKU,v.StockQty,product=v.Product.Name,size=v.Size.Label,color=v.Color.Name}).ToListAsync(ct);
@@ -153,11 +153,11 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
     [HttpDelete("sizes/{id:int}"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> DeleteSize(int id,CancellationToken ct){var s=await db.Sizes.FindAsync([id],ct);if(s==null)return NotFound();if(await db.ProductVariants.AnyAsync(v=>v.SizeId==id,ct))return ConflictProblem("Size is used by product variants.");db.Sizes.Remove(s);await db.SaveChangesAsync(ct);Log("size.delete",id);return NoContent();}
     [HttpGet("colors"), Authorize(Policy = "StaffOnly")]
-    public async Task<IActionResult> Colors(CancellationToken ct)=>Ok(await db.Colors.AsNoTracking().OrderBy(c=>c.Name).Select(c=>new{c.ColorId,c.Name,c.HexCode}).ToListAsync(ct));
+    public async Task<IActionResult> Colors(CancellationToken ct)=>Ok(await db.Colors.AsNoTracking().OrderBy(c=>c.Name).Select(c=>new{c.ColorId,c.Name}).ToListAsync(ct));
     [HttpPost("colors"), Authorize(Policy = "StaffOnly")]
-    public async Task<IActionResult> CreateColor(ColorRequest r,[FromServices]IValidator<ColorRequest> validator,CancellationToken ct){var e=await Validate(validator,r,ct);if(e!=null)return e;var c=new Color{Name=r.Name.Trim(),HexCode=r.HexCode};db.Colors.Add(c);await db.SaveChangesAsync(ct);Log("color.create",c.ColorId);return Created($"/api/manage/colors/{c.ColorId}",new{c.ColorId,c.Name,c.HexCode});}
+    public async Task<IActionResult> CreateColor(ColorRequest r,[FromServices]IValidator<ColorRequest> validator,CancellationToken ct){var e=await Validate(validator,r,ct);if(e!=null)return e;var c=new Color{Name=r.Name.Trim()};db.Colors.Add(c);await db.SaveChangesAsync(ct);Log("color.create",c.ColorId);return Created($"/api/manage/colors/{c.ColorId}",new{c.ColorId,c.Name});}
     [HttpPut("colors/{id:int}"), Authorize(Policy = "StaffOnly")]
-    public async Task<IActionResult> UpdateColor(int id,ColorRequest r,[FromServices]IValidator<ColorRequest> validator,CancellationToken ct){var e=await Validate(validator,r,ct);if(e!=null)return e;var c=await db.Colors.FindAsync([id],ct);if(c==null)return NotFound();c.Name=r.Name.Trim();c.HexCode=r.HexCode;await db.SaveChangesAsync(ct);Log("color.update",id);return Ok(new{c.ColorId,c.Name,c.HexCode});}
+    public async Task<IActionResult> UpdateColor(int id,ColorRequest r,[FromServices]IValidator<ColorRequest> validator,CancellationToken ct){var e=await Validate(validator,r,ct);if(e!=null)return e;var c=await db.Colors.FindAsync([id],ct);if(c==null)return NotFound();c.Name=r.Name.Trim();await db.SaveChangesAsync(ct);Log("color.update",id);return Ok(new{c.ColorId,c.Name});}
     [HttpDelete("colors/{id:int}"), Authorize(Policy = "StaffOnly")]
     public async Task<IActionResult> DeleteColor(int id,CancellationToken ct){var c=await db.Colors.FindAsync([id],ct);if(c==null)return NotFound();if(await db.ProductVariants.AnyAsync(v=>v.ColorId==id,ct))return ConflictProblem("Color is used by product variants.");db.Colors.Remove(c);await db.SaveChangesAsync(ct);Log("color.delete",id);return NoContent();}
 
@@ -198,7 +198,7 @@ public sealed record StatusRequest(string Status);
 public sealed record ImageOrderRequest(IReadOnlyList<int> ImageIds);
 public sealed record CategoryRequest(string Name,int? ParentCategoryId);
 public sealed record NameRequest(string Name);
-public sealed record ColorRequest(string Name,string? HexCode);
+public sealed record ColorRequest(string Name);
 
 public sealed class ProductRequestValidator:AbstractValidator<ProductRequest>{public ProductRequestValidator(){RuleFor(x=>x.ProductCode).NotEmpty().MaximumLength(50);RuleFor(x=>x.Name).NotEmpty().MaximumLength(200);RuleFor(x=>x.Description).MaximumLength(4000);RuleFor(x=>x.CategoryId).GreaterThan(0);RuleFor(x=>x.BasePrice).GreaterThan(0).LessThanOrEqualTo(10000000);}}
 public sealed class ActiveRequestValidator:AbstractValidator<ActiveRequest>{public ActiveRequestValidator(){RuleFor(x=>x.IsActive).NotNull();}}
@@ -209,4 +209,4 @@ public sealed class StatusRequestValidator:AbstractValidator<StatusRequest>{publ
 public sealed class ImageOrderRequestValidator:AbstractValidator<ImageOrderRequest>{public ImageOrderRequestValidator(){RuleFor(x=>x.ImageIds).NotNull().Must(x=>x.Count<=100).WithMessage("Too many image ids.");}}
 public sealed class CategoryRequestValidator:AbstractValidator<CategoryRequest>{public CategoryRequestValidator(){RuleFor(x=>x.Name).NotEmpty().MaximumLength(100);RuleFor(x=>x.ParentCategoryId).GreaterThan(0).When(x=>x.ParentCategoryId.HasValue);}}
 public sealed class NameRequestValidator:AbstractValidator<NameRequest>{public NameRequestValidator(){RuleFor(x=>x.Name).NotEmpty().MaximumLength(30);}}
-public sealed class ColorRequestValidator:AbstractValidator<ColorRequest>{public ColorRequestValidator(){RuleFor(x=>x.Name).NotEmpty().MaximumLength(100);RuleFor(x=>x.HexCode).Matches("^#[0-9a-fA-F]{6}$").When(x=>!string.IsNullOrWhiteSpace(x.HexCode));}}
+public sealed class ColorRequestValidator:AbstractValidator<ColorRequest>{public ColorRequestValidator(){RuleFor(x=>x.Name).NotEmpty().MaximumLength(100);}}

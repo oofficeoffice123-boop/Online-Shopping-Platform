@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ZSquare.API.Security;
+using ZSquare.Domain;
 using ZSquare.Infrastructure;
 
 namespace ZSquare.API.Controllers;
@@ -33,7 +34,7 @@ public sealed class ManageReviewsController(AppDbContext db, ILogger<ManageRevie
         var result=await validator.ValidateAsync(request,ct);
         if(!result.IsValid)return ValidationProblem(new ValidationProblemDetails(result.Errors.GroupBy(error=>error.PropertyName).ToDictionary(group=>group.Key,group=>group.Select(error=>error.ErrorMessage).ToArray())));
         var review=await db.Reviews.SingleOrDefaultAsync(item=>item.ReviewId==id,ct);if(review is null)return NotFound();
-        review.IsHidden=request.IsHidden;review.ModeratedByUserId=User.GetUserId();review.ModeratedAt=DateTime.UtcNow;
+        review.IsHidden=request.IsHidden;review.ModeratedByUserId=User.GetUserId();review.ModeratedAt=PakistanClock.Now;
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Management action review.moderate by {UserId} on review {ReviewId}; hidden={IsHidden}",User.GetUserId(),id,request.IsHidden);
         return Ok(new{id=review.ReviewId,review.IsHidden,review.ModeratedAt});

@@ -27,5 +27,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        foreach (var property in entity.GetProperties())
+        {
+            if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                modelBuilder.Entity(entity.ClrType).Property(property.Name).HasPrecision(0);
+            if (property.Name == "IsActive")
+                modelBuilder.Entity(entity.ClrType).Property(property.Name).HasDefaultValue(true);
+            if (property.Name == "IsDeleted")
+                modelBuilder.Entity(entity.ClrType).Property(property.Name).HasDefaultValue(false);
+        }
     }
 }

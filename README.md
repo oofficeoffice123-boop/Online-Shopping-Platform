@@ -32,8 +32,8 @@ For local development, configure `Jwt:SigningKey` (at least 32 characters)
 and `Auth:SeedPasswords:Admin`, `Auth:SeedPasswords:Manager`, and
 `Auth:SeedPasswords:Customer` with `dotnet user-secrets set --project
 ZSquare.API/ZSquare.API.csproj`. Seeded account emails are
-`admin@shopease.local`, `manager@shopease.local`, and
-`customer@shopease.local`. The refresh-token cleanup service removes tokens
+`admin@zsquare.local`, `manager@zsquare.local`, and
+`customer@zsquare.local`. The refresh-token cleanup service removes tokens
 that expired more than 30 days ago.
 
 ## Khaadi import design

@@ -207,7 +207,7 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
                 return await FailAndRollbackAsync<CheckoutResult>(transaction, 409,
                     "Some cart items changed and could not be checked out.", cancellationToken, failures);
 
-            var now = DateTime.UtcNow;
+            var now = PakistanClock.Now;
             var pending = await db.OrderStatuses.SingleOrDefaultAsync(status => status.Name == "Pending", cancellationToken)
                 ?? throw new InvalidOperationException("Pending order status is missing. Run reference-data seeding first.");
             var paid = request.PaymentMethod == "MockCard"
@@ -218,6 +218,8 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
             {
                 var unitPrice = Money(item.Variant.PriceOverride ?? item.Variant.Product.BasePrice);
                 item.Variant.StockQty -= item.Quantity;
+                item.Variant.UpdatedAt = now;
+                item.Variant.UpdatedBy = userId;
                 return new OrderItem
                 {
                     VariantId = item.VariantId,
@@ -246,6 +248,9 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
                 [
                     new Payment
                     {
+                        UserId = userId,
+                        CreatedAt = now,
+                        CreatedBy = userId,
                         Method = request.PaymentMethod,
                         Status = request.PaymentMethod == "MockCard" ? "Succeeded" : "Pending",
                         Amount = total,
@@ -357,7 +362,7 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
                 FromStatus = order.Status.Name,
                 ToStatus = cancelled.Name,
                 ChangedByUserId = userId,
-                ChangedAt = DateTime.UtcNow
+                ChangedAt = PakistanClock.Now
             });
             ApplyCancellation(order, cancelled);
 

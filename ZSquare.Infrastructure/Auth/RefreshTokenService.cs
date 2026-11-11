@@ -17,7 +17,7 @@ public sealed class RefreshTokenService(IRefreshTokenRepository repository) : IR
     public async Task<CreatedRefreshToken> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         var rawToken = GenerateToken();
-        var now = DateTime.UtcNow;
+        var now = PakistanClock.Now;
         var expiresAt = now.Add(TokenLifetime);
         await repository.AddAsync(new RefreshToken
         {
@@ -28,7 +28,7 @@ public sealed class RefreshTokenService(IRefreshTokenRepository repository) : IR
             ExpiresAt = expiresAt
         }, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
-        return new CreatedRefreshToken(rawToken, new DateTimeOffset(expiresAt, TimeSpan.Zero));
+        return new CreatedRefreshToken(rawToken, new DateTimeOffset(expiresAt, TimeSpan.FromHours(5)));
     }
 
     public async Task<RotatedRefreshToken> RotateAsync(string token, CancellationToken cancellationToken = default)
@@ -37,7 +37,7 @@ public sealed class RefreshTokenService(IRefreshTokenRepository repository) : IR
         if (current is null)
             throw new AuthException(AuthException.InvalidRefreshTokenMessage);
 
-        var now = DateTime.UtcNow;
+        var now = PakistanClock.Now;
         if (current.RevokedAt is not null)
         {
             await RevokeAllForUserAsync(current.UserId, cancellationToken);
@@ -47,7 +47,7 @@ public sealed class RefreshTokenService(IRefreshTokenRepository repository) : IR
         if (current.ExpiresAt <= now)
             throw new AuthException(AuthException.InvalidRefreshTokenMessage);
 
-        if (!current.User.IsActive)
+        if (current.User.IsDeleted || !current.User.IsActive)
         {
             await RevokeAllForUserAsync(current.UserId, cancellationToken);
             throw new AuthException(AuthException.InvalidRefreshTokenMessage);
@@ -71,7 +71,7 @@ public sealed class RefreshTokenService(IRefreshTokenRepository repository) : IR
         return new RotatedRefreshToken(
             current.User,
             nextRawToken,
-            new DateTimeOffset(nextExpiresAt, TimeSpan.Zero));
+            new DateTimeOffset(nextExpiresAt, TimeSpan.FromHours(5)));
     }
 
     public async Task RevokeAsync(string? token, CancellationToken cancellationToken = default)
@@ -83,10 +83,10 @@ public sealed class RefreshTokenService(IRefreshTokenRepository repository) : IR
         if (current is null || current.RevokedAt is not null)
             return;
 
-        current.RevokedAt = DateTime.UtcNow;
+        current.RevokedAt = PakistanClock.Now;
         await repository.SaveChangesAsync(cancellationToken);
     }
 
     public Task RevokeAllForUserAsync(int userId, CancellationToken cancellationToken = default) =>
-        repository.RevokeAllForUserAsync(userId, DateTime.UtcNow, cancellationToken);
+        repository.RevokeAllForUserAsync(userId, PakistanClock.Now, cancellationToken);
 }

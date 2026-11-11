@@ -36,7 +36,6 @@ public sealed class AccessTokenService : IAccessTokenService
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role.Name),
-            new Claim("must_change_password", user.MustChangePassword.ToString().ToLowerInvariant())
         };
         var jwt = new JwtSecurityToken(
             _issuer,

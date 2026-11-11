@@ -58,7 +58,7 @@ public sealed class ProductReviewsController(AppDbContext db) : ControllerBase
         var userId = User.GetUserId();
         if (!await HasDeliveredPurchase(productId, userId, ct)) return ConflictProblem("A delivered purchase of this product is required to review it.");
         if (await db.Reviews.AnyAsync(review => review.ProductId == productId && review.UserId == userId, ct)) return ConflictProblem("You have already reviewed this product.");
-        var review = new Review { ProductId = productId, UserId = userId, Rating = request.Rating, Comment = NormalizeComment(request.Comment), CreatedAt = DateTime.UtcNow };
+        var review = new Review { ProductId = productId, UserId = userId, Rating = request.Rating, Comment = NormalizeComment(request.Comment), CreatedAt = PakistanClock.Now };
         db.Reviews.Add(review);
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateException) { return ConflictProblem("A review already exists for this product."); }
