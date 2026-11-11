@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using FluentValidation;
@@ -108,14 +107,14 @@ public static class ApiServiceCollectionExtensions
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
                     ClockSkew = TimeSpan.Zero,
-                    NameClaimType = ClaimTypes.NameIdentifier,
-                    RoleClaimType = ClaimTypes.Role
+                    NameClaimType = "UserId",
+                    RoleClaimType = "roles"
                 };
                 options.Events = new JwtBearerEvents
                 {
                     OnTokenValidated = async context =>
                     {
-                        var userIdClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        var userIdClaim = context.Principal?.FindFirst("UserId")?.Value;
                         if (!int.TryParse(userIdClaim, out var userId))
                         {
                             context.Fail("The access token does not identify a valid user.");

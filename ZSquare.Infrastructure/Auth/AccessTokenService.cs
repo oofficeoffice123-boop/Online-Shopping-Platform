@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ZSquare.Application.Auth;
 using ZSquare.Domain;
-using System.Security.Claims;
 using System.Text;
 
 namespace ZSquare.Infrastructure.Auth;
@@ -33,9 +33,10 @@ public sealed class AccessTokenService : IAccessTokenService
         var expiresAt = now.Add(TokenLifetime);
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role.Name),
+            new Claim("UserId", user.UserId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new Claim("email", user.Email),
+            new Claim("roleId", user.RoleId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new Claim("roles", user.Role.Name),
         };
         var jwt = new JwtSecurityToken(
             _issuer,
