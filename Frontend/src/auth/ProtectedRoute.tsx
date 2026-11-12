@@ -1,18 +1,35 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useAuth, type AuthUser } from './AuthContext'
+import { useAuth } from './AuthContext'
+
+export type AllowedPage = { pageId: number; name: string; route: string; sortOrder: number }
+
+export function isPageAllowed(pathname: string, pages: AllowedPage[]) {
+  const currentRoute = pathname.replace(/\/+$/, '') || '/'
+  return pages.some(page => {
+    const pageRoute = page.route.replace(/\/+$/, '') || '/'
+    return currentRoute === pageRoute ||
+      (['/products', '/orders'].includes(pageRoute) && currentRoute.startsWith(`${pageRoute}/`))
+  })
+}
 
 export default function ProtectedRoute({
   children,
-  allowedRoles,
+  allowedPages = [],
+  pagesLoading = false,
+  pagesError = '',
 }: {
   children: ReactNode
-  allowedRoles?: AuthUser['role'][]
+  allowedPages?: AllowedPage[]
+  pagesLoading?: boolean
+  pagesError?: string
 }) {
   const { user, isLoading } = useAuth()
   const location = useLocation()
-  if (isLoading) return <p className="auth-loading">Restoring your session…</p>
+  if (isLoading || (user && pagesLoading)) return <p className="auth-loading">Restoring your session...</p>
   if (!user) return <Navigate to="/login" replace state={{ returnTo: `${location.pathname}${location.search}` }} />
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />
+  if (pagesError) return <main className="admin-shell"><div className="admin-alert" role="alert">{pagesError} <button type="button" className="admin-secondary" onClick={() => window.location.reload()}>Retry</button></div></main>
+
+  if (!isPageAllowed(location.pathname, allowedPages)) return <Navigate to="/access-denied" replace state={{ requestedPath: location.pathname }} />
   return children
 }

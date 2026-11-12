@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 function errorMessage(error: unknown) {
@@ -12,7 +12,7 @@ function errorMessage(error: unknown) {
 }
 
 export default function LoginPage() {
-  const { login, user, isLoading } = useAuth()
+  const { login, logout, user, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
@@ -21,7 +21,12 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (!isLoading && user) return <Navigate to={user.role === 'Customer' ? '/' : '/manage'} replace />
+  if (!isLoading && user) return <section className="auth-card">
+    <p className="eyebrow">ACCOUNT ALREADY SIGNED IN</p>
+    <h1>{user.fullName}</h1>
+    <p>You are signed in as {user.email} ({user.role}). Sign out to use another account.</p>
+    <button className="search-button" type="button" onClick={() => void logout()}>Sign out and switch account</button>
+  </section>
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -29,7 +34,11 @@ export default function LoginPage() {
     setBusy(true)
     try {
       const signedInUser = await login({ email, password })
-      navigate(signedInUser.role === 'Customer' ? (returnTo?.startsWith('/') ? returnTo : '/') : '/manage', { replace: true })
+      const safeReturnTo = returnTo?.startsWith('/') && !returnTo.startsWith('//') ? returnTo : null
+      const landingPage = signedInUser.role === 'Customer'
+        ? '/products'
+        : signedInUser.role === 'Manager' ? '/manage/dashboard' : '/admin/users'
+      navigate(safeReturnTo ?? landingPage, { replace: true })
     } catch (submitError) {
       setError(errorMessage(submitError))
     } finally {

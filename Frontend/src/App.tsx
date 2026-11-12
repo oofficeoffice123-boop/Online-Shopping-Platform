@@ -1,6 +1,6 @@
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
-import ProtectedRoute from './auth/ProtectedRoute'
+import ProtectedRoute, { isPageAllowed } from './auth/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import ManagePage from './pages/ManagePage'
 import HomePage from './pages/HomePage'
@@ -15,7 +15,12 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage'
 import ManageReviewsPage from './pages/ManageReviewsPage'
 import ManagerDashboardPage from './pages/ManagerDashboardPage'
 import InventoryPage from './pages/InventoryPage'
+import AdminUsersPage from './pages/AdminUsersPage'
+import AdminAuditLogPage from './pages/AdminAuditLogPage'
+import AccessDeniedPage from './pages/AccessDeniedPage'
 import { getCart, type Cart } from './pages/shoppingApi'
+import { api } from './auth/apiClient'
+import type { AllowedPage } from './auth/ProtectedRoute'
 import { useEffect, useState } from 'react'
 
 export default function App() {
@@ -23,6 +28,46 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [cart, setCart] = useState<Cart | null>(null)
+  const [allowedPages, setAllowedPages] = useState<AllowedPage[]>([])
+  const [pagesLoadedForUserId, setPagesLoadedForUserId] = useState<number | null>(null)
+  const [pagesError, setPagesError] = useState('')
+  const pagesLoading = Boolean(user && pagesLoadedForUserId !== user.userId)
+
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      setAllowedPages([])
+      setPagesLoadedForUserId(null)
+      setPagesError('')
+      return () => { active = false }
+    }
+
+    setAllowedPages([])
+    setPagesError('')
+    void api.get<AllowedPage[]>('/api/pages/my-pages')
+      .then(({ data }) => {
+        if (active) {
+          setAllowedPages(data)
+          setPagesLoadedForUserId(user.userId)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAllowedPages([])
+          setPagesError('Page access could not be loaded. Refresh and try again.')
+          setPagesLoadedForUserId(user.userId)
+        }
+      })
+    return () => { active = false }
+  }, [user])
+
+  useEffect(() => {
+    if (location.pathname !== '/access-denied' || !user || pagesLoading) return
+    const requestedPath = (location.state as { requestedPath?: string } | null)?.requestedPath
+    if (requestedPath && isPageAllowed(requestedPath, allowedPages)) {
+      navigate(requestedPath, { replace: true })
+    }
+  }, [allowedPages, location.pathname, location.state, navigate, pagesLoading, user])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -61,9 +106,10 @@ export default function App() {
       <Link to="/" className="auth-brand">Z SQUARE</Link>
       <nav aria-label="Main navigation">
         <Link to="/">Home</Link>
-        <Link to="/products">Shop</Link>
-        {user?.role === 'Customer' && <><Link to="/orders">My orders</Link><Link to="/cart" className="cart-nav-link">Bag{cart?.items.length ? <span>{cart.items.reduce((sum, item) => sum + item.quantity, 0)}</span> : null}</Link></>}
-        {user && (user.role === 'Manager' || user.role === 'Admin') && <><Link to="/manage/dashboard">Dashboard</Link><Link to="/manage/inventory">Inventory</Link><Link to="/manage">Manage</Link><Link to="/manage/reviews">Review moderation</Link></>}
+        {!user && <Link to="/products">Shop</Link>}
+        {allowedPages.filter(page => page.route !== '/checkout').map(page => <Link key={page.pageId} to={page.route} className={page.route === '/cart' ? 'cart-nav-link' : undefined}>
+          {page.name === 'Cart' ? <>Bag{cart?.items.length ? <span>{cart.items.reduce((sum, item) => sum + item.quantity, 0)}</span> : null}</> : page.name}
+        </Link>)}
       </nav>
       <div className="auth-account">
         {isLoading ? <span className="auth-nav-muted">Restoring session…</span> : user
@@ -76,17 +122,20 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/products" element={<ProductListPage />} />
       <Route path="/products/:id" element={<ProductDetailsPage />} />
-      <Route path="/cart" element={<ProtectedRoute allowedRoles={['Customer']}><CartPage /></ProtectedRoute>} />
-      <Route path="/checkout" element={<ProtectedRoute allowedRoles={['Customer']}><CheckoutPage /></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute allowedRoles={['Customer']}><MyOrdersPage /></ProtectedRoute>} />
-      <Route path="/orders/:id/confirmation" element={<ProtectedRoute allowedRoles={['Customer']}><OrderConfirmationPage /></ProtectedRoute>} />
-      <Route path="/orders/:id" element={<ProtectedRoute allowedRoles={['Customer']}><OrderDetailsPage /></ProtectedRoute>} />
+      <Route path="/cart" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><CartPage /></ProtectedRoute>} />
+      <Route path="/checkout" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><CheckoutPage /></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><MyOrdersPage /></ProtectedRoute>} />
+      <Route path="/orders/:id/confirmation" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><OrderConfirmationPage /></ProtectedRoute>} />
+      <Route path="/orders/:id" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><OrderDetailsPage /></ProtectedRoute>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/manage" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><ManagePage /></ProtectedRoute>} />
-      <Route path="/manage/dashboard" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><ManagerDashboardPage /></ProtectedRoute>} />
-      <Route path="/manage/inventory" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><InventoryPage /></ProtectedRoute>} />
-      <Route path="/manage/reviews" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><ManageReviewsPage /></ProtectedRoute>} />
+      <Route path="/manage" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><ManagePage /></ProtectedRoute>} />
+      <Route path="/manage/dashboard" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><ManagerDashboardPage /></ProtectedRoute>} />
+      <Route path="/manage/inventory" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><InventoryPage /></ProtectedRoute>} />
+      <Route path="/manage/reviews" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><ManageReviewsPage /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><AdminUsersPage /></ProtectedRoute>} />
+      <Route path="/admin/audit-logs" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><AdminAuditLogPage /></ProtectedRoute>} />
+      <Route path="/access-denied" element={<AccessDeniedPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </>

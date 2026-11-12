@@ -129,3 +129,9 @@
 .order-review-form form > button { justify-self: start; padding: 11px 17px; border: 0; background: #302a25; color: #fff; font-size: 11px; cursor: pointer; }
 .order-review-form form > button:disabled { opacity: .5; cursor: wait; }
 .order-review-notice { color: #537052; font-size: 11px; }
+.checkout-payment-choice { display:flex; align-items:center; gap:16px; padding:16px; border:1px solid #76543e; background:#faf7f3; }
+.checkout-payment-dot { width:15px; height:15px; flex:0 0 15px; border:4px solid #76543e; border-radius:50%; box-sizing:border-box; background:#fff; }
+.checkout-payment-choice > span:nth-child(2) { display:grid; gap:6px; }
+.checkout-payment-choice strong { color:#302b26; font-size:13px; }
+.checkout-payment-choice small { color:#83776c; font-size:10px; }
+.checkout-payment-selected { margin-left:auto; color:#617657; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }

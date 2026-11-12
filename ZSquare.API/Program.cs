@@ -69,6 +69,11 @@ if (app.Environment.IsDevelopment())
     await seeder.SeedAsync();
     await scope.ServiceProvider.GetRequiredService<DevelopmentUserSeeder>().SeedAsync();
 }
+else
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<ReferenceDataSeeder>().SeedPageAccessAsync();
+}
 
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();

@@ -210,10 +210,6 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
             var now = PakistanClock.Now;
             var pending = await db.OrderStatuses.SingleOrDefaultAsync(status => status.Name == "Pending", cancellationToken)
                 ?? throw new InvalidOperationException("Pending order status is missing. Run reference-data seeding first.");
-            var paid = request.PaymentMethod == "MockCard"
-                ? await db.OrderStatuses.SingleOrDefaultAsync(status => status.Name == "Paid", cancellationToken)
-                    ?? throw new InvalidOperationException("Paid order status is missing. Run reference-data seeding first.")
-                : pending;
             var orderItems = cart.Items.Select(item =>
             {
                 var basePrice = item.Variant.PriceOverride ?? item.Variant.Product.BasePrice;
@@ -232,8 +228,8 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
             var order = new Order
             {
                 UserId = userId,
-                StatusId = paid.StatusId,
-                Status = paid,
+                StatusId = pending.StatusId,
+                Status = pending,
                 OrderDate = now,
                 ShipName = (await db.Users.AsNoTracking().Where(user => user.UserId == userId)
                     .Select(user => user.FullName).SingleAsync(cancellationToken)).Trim(),
@@ -253,10 +249,10 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
                         CreatedAt = now,
                         CreatedBy = userId,
                         Method = request.PaymentMethod,
-                        Status = request.PaymentMethod == "MockCard" ? "Succeeded" : "Pending",
+                        Status = "Pending",
                         Amount = total,
-                        TransactionRef = request.PaymentMethod == "MockCard" ? $"MOCK-{Guid.NewGuid():N}" : null,
-                        PaidAt = request.PaymentMethod == "MockCard" ? now : null
+                        TransactionRef = null,
+                        PaidAt = null
                     }
                 ]
             };
@@ -387,7 +383,7 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
         order.Status = cancelled;
         order.StatusId = cancelled.StatusId;
         foreach (var item in order.Items) item.Variant.StockQty += item.Quantity;
-        foreach (var payment in order.Payments) payment.Status = payment.Method == "MockCard" ? "Refunded" : "Cancelled";
+        foreach (var payment in order.Payments) payment.Status = "Cancelled";
     }
 
     private async Task<Cart> GetOrCreateCartAsync(int userId, CancellationToken cancellationToken)

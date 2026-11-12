@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using ZSquare.API.Security;
 using ZSquare.Domain;
 using ZSquare.Infrastructure;
@@ -34,14 +35,15 @@ public sealed class ManageReviewsController(AppDbContext db, ILogger<ManageRevie
         if(!result.IsValid)return ValidationProblem(new ValidationProblemDetails(result.Errors.GroupBy(error=>error.PropertyName).ToDictionary(group=>group.Key,group=>group.Select(error=>error.ErrorMessage).ToArray())));
         var review=await db.Reviews.SingleOrDefaultAsync(item=>item.ReviewId==id,ct);if(review is null)return NotFound();
         review.IsHidden=request.IsHidden;review.ModeratedByUserId=User.GetUserId();review.ModeratedAt=PakistanClock.Now;
+        db.AuditLogs.Add(new ZSquare.Domain.AuditLog { ActorUserId = User.GetUserId(), Action = request.IsHidden ? "review.hide" : "review.unhide", EntityType = "Review", EntityId = id.ToString(), DetailsJson = JsonSerializer.Serialize(new { review.ProductId, review.Rating }), CreatedAt = PakistanClock.Now });
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Management action review.moderate by {UserId} on review {ReviewId}; hidden={IsHidden}",User.GetUserId(),id,request.IsHidden);
         return Ok(new{id=review.ReviewId,review.IsHidden,review.ModeratedAt});
     }
 
-    [HttpDelete("{id:int}"), Authorize(Policy = "StaffOnly")]
+    [HttpDelete("{id:int}"), Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(int id,CancellationToken ct)
-    {var review=await db.Reviews.FindAsync([id],ct);if(review is null)return NotFound();db.Reviews.Remove(review);await db.SaveChangesAsync(ct);logger.LogInformation("Management action review.delete by {UserId} on review {ReviewId}",User.GetUserId(),id);return NoContent();}
+    {var review=await db.Reviews.FindAsync([id],ct);if(review is null)return NotFound();db.AuditLogs.Add(new ZSquare.Domain.AuditLog { ActorUserId = User.GetUserId(), Action = "review.delete", EntityType = "Review", EntityId = id.ToString(), DetailsJson = JsonSerializer.Serialize(new { review.ProductId, review.Rating }), CreatedAt = PakistanClock.Now });db.Reviews.Remove(review);await db.SaveChangesAsync(ct);logger.LogInformation("Management action review.delete by {UserId} on review {ReviewId}",User.GetUserId(),id);return NoContent();}
 
     private static string ReviewerName(string fullName){var parts=fullName.Split(' ',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries);return parts.Length<2?parts.FirstOrDefault()??"Customer":$"{parts[0]} {char.ToUpperInvariant(parts[^1][0])}.";}
 }

@@ -41,6 +41,14 @@ public sealed class DevelopmentUserSeeder(
                     existingUser.Email = email;
                     existingUser.FullName = fullName;
                 }
+                if (!roles.TryGetValue(roleName, out var existingRole))
+                    throw new InvalidOperationException($"Role '{roleName}' is missing. Run reference-data seeding first.");
+                existingUser.RoleId = existingRole.RoleId;
+                existingUser.IsActive = true;
+                existingUser.IsDeleted = false;
+                var configuredPassword = configuration[passwordKey];
+                if (!string.IsNullOrWhiteSpace(configuredPassword))
+                    existingUser.PasswordHash = passwordHasher.Hash(existingUser, configuredPassword);
                 continue;
             }
 

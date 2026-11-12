@@ -8,7 +8,7 @@ namespace ZSquare.API.Controllers;
 
 [ApiController]
 [Route("api/cart")]
-[Authorize(Policy = "CustomerOnly")]
+[Authorize(Policy = "CustomerOrAdmin")]
 public sealed class CartController(ICustomerCommerceService commerce) : ControllerBase
 {
     [HttpGet]

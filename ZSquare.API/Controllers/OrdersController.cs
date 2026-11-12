@@ -7,7 +7,7 @@ namespace ZSquare.API.Controllers;
 
 [ApiController]
 [Route("api/orders")]
-[Authorize(Policy = "CustomerOnly")]
+[Authorize(Policy = "CustomerOrAdmin")]
 public sealed class OrdersController(ICustomerCommerceService commerce) : ControllerBase
 {
     [HttpPost("checkout")]

@@ -5,6 +5,8 @@ namespace ZSquare.Infrastructure;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Page> Pages => Set<Page>();
+    public DbSet<RolePage> RolePages => Set<RolePage>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Address> Addresses => Set<Address>();

@@ -64,7 +64,7 @@ export async function setCartQuantity(cartItemId: number, quantity: number) {
 export async function removeCartItem(cartItemId: number) { await api.delete(`/api/cart/items/${cartItemId}`) }
 export async function getAddresses() { return (await api.get<Address[]>('/api/addresses')).data }
 export async function addAddress(request: AddressInput) { return (await api.post<Address>('/api/addresses', request)).data }
-export async function checkout(addressId: number, paymentMethod: 'CashOnDelivery' | 'MockCard', idempotencyKey: string) {
+export async function checkout(addressId: number, paymentMethod: 'CashOnDelivery', idempotencyKey: string) {
   return (await api.post<OrderSummary>('/api/orders/checkout', { addressId, paymentMethod }, { headers: { 'Idempotency-Key': idempotencyKey } })).data
 }
 export async function getOrders(page = 1) { return (await api.get<OrderPage>(`/api/orders?page=${page}&pageSize=12`)).data }

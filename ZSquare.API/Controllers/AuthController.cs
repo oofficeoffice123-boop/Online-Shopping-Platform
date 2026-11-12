@@ -16,7 +16,8 @@ public sealed record ChangePasswordRequest(string CurrentPassword, string NewPas
 public sealed class AuthController(
     IAuthService authService,
     IValidator<RegisterRequest> registerValidator,
-    IValidator<LoginRequest> loginValidator) : ControllerBase
+    IValidator<LoginRequest> loginValidator,
+    IWebHostEnvironment environment) : ControllerBase
 {
     private const string RefreshCookieName = "ZSquare.RefreshToken";
 
@@ -134,7 +135,9 @@ public sealed class AuthController(
         Response.Cookies.Append(RefreshCookieName, response.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            // React's local development server uses HTTP. A Secure cookie is not
+            // sent on that origin, which makes the next token refresh sign the user out.
+            Secure = !environment.IsDevelopment() || Request.IsHttps,
             SameSite = SameSiteMode.Strict,
             Path = "/api/auth",
             Expires = response.RefreshTokenExpiresAt,
@@ -145,7 +148,7 @@ public sealed class AuthController(
     private void ClearRefreshCookie() => Response.Cookies.Delete(RefreshCookieName, new CookieOptions
     {
         HttpOnly = true,
-        Secure = true,
+        Secure = !environment.IsDevelopment() || Request.IsHttps,
         SameSite = SameSiteMode.Strict,
         Path = "/api/auth"
     });

@@ -11,7 +11,7 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart | null>(null)
   const [addresses, setAddresses] = useState<Address[]>([])
   const [addressId, setAddressId] = useState<number | ''>('')
-  const [paymentMethod, setPaymentMethod] = useState<'CashOnDelivery' | 'MockCard'>('CashOnDelivery')
+  const paymentMethod = 'CashOnDelivery' as const
   const [addingAddress, setAddingAddress] = useState(false)
   const [addressForm, setAddressForm] = useState(emptyAddress)
   const [submitting, setSubmitting] = useState(false)
@@ -88,7 +88,7 @@ export default function CheckoutPage() {
             <button className="browse-cta" type="submit">Save address</button>
           </form> : addresses.length === 0 ? <p className="commerce-muted">Add a shipping address to continue.</p> : <div className="checkout-addresses">{addresses.map(address => <label className={addressId === address.addressId ? 'checkout-address selected' : 'checkout-address'} key={address.addressId}><input type="radio" name="address" checked={addressId === address.addressId} onChange={() => setAddressId(address.addressId)} /><span><strong>{address.line1}{address.line2 ? `, ${address.line2}` : ''}</strong><small>{address.city}, {address.postalCode}, {address.country}</small>{address.isDefault && <em>Default</em>}</span></label>)}</div>}
         </section>
-        <section className="checkout-section"><h2>Payment method</h2><div className="checkout-payment-options"><label><input type="radio" checked={paymentMethod === 'CashOnDelivery'} onChange={() => setPaymentMethod('CashOnDelivery')} /><span><strong>Cash on delivery</strong><small>Pay when your order arrives</small></span></label><label><input type="radio" checked={paymentMethod === 'MockCard'} onChange={() => setPaymentMethod('MockCard')} /><span><strong>Mock card</strong><small>Simulated payment for this project</small></span></label></div></section>
+        <section className="checkout-section"><h2>Payment method</h2><div className="checkout-payment-options"><div className="checkout-payment-choice"><span className="checkout-payment-dot" aria-hidden="true" /><span><strong>Cash on delivery</strong><small>Pay when your order arrives</small></span><span className="checkout-payment-selected">Selected</span></div></div></section>
       </section>
       <aside className="commerce-summary"><h2>Order summary</h2>{cart.items.map(item => <div className="checkout-summary-item" key={item.cartItemId}>{item.imageUrl && <img src={assetUrl(item.imageUrl) ?? ''} alt="" />}<span>{item.productName}<small>{item.color} · {item.size} × {item.quantity}</small></span><strong>{money(item.lineTotal)}</strong></div>)}<p><span>Subtotal</span><strong>{money(cart.subtotal)}</strong></p>{cart.items.some(item => !item.inStock) && <p className="shopping-warning">Update unavailable items in your bag before placing the order.</p>}<button className="browse-cta checkout-submit" type="button" disabled={submitting || !addressId || cart.items.length === 0 || cart.items.some(item => !item.inStock)} onClick={() => void placeOrder()}>{submitting ? 'Placing order…' : 'Place order'} <span>→</span></button><Link className="checkout-back-link" to="/cart">Return to shopping bag</Link></aside>
     </div>

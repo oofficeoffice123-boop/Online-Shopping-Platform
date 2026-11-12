@@ -77,6 +77,50 @@ namespace ZSquare.Infrastructure.Migrations
                     b.ToTable("Addresses");
                 });
 
+            modelBuilder.Entity("ZSquare.Domain.AuditLog", b =>
+                {
+                    b.Property<long>("AuditLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AuditLogId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("ActorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<string>("DetailsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("AuditLogId");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("ZSquare.Domain.Cart", b =>
                 {
                     b.Property<int>("CartId")
@@ -208,6 +252,41 @@ namespace ZSquare.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Colors");
+                });
+
+            modelBuilder.Entity("ZSquare.Domain.InventoryRestockLog", b =>
+                {
+                    b.Property<int>("InventoryRestockLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryRestockLogId"));
+
+                    b.Property<int>("PreviousStock")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuantityAdded")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RestockedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VariantId")
+                        .HasColumnType("int");
+
+                    b.HasKey("InventoryRestockLogId");
+
+                    b.HasIndex("RestockedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VariantId");
+
+                    b.ToTable("InventoryRestockLogs");
                 });
 
             modelBuilder.Entity("ZSquare.Domain.Order", b =>
@@ -415,6 +494,35 @@ namespace ZSquare.Infrastructure.Migrations
                     b.ToTable("OrderStatusHistory");
                 });
 
+            modelBuilder.Entity("ZSquare.Domain.Page", b =>
+                {
+                    b.Property<int>("PageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PageId"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Route")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("PageId");
+
+                    b.HasIndex("Route")
+                        .IsUnique();
+
+                    b.ToTable("Pages");
+                });
+
             modelBuilder.Entity("ZSquare.Domain.Payment", b =>
                 {
                     b.Property<int>("PaymentId")
@@ -604,6 +712,10 @@ namespace ZSquare.Infrastructure.Migrations
                     b.Property<int>("ColorId")
                         .HasColumnType("int");
 
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -638,10 +750,6 @@ namespace ZSquare.Infrastructure.Migrations
                     b.Property<int>("StockQty")
                         .HasColumnType("int");
 
-            b.Property<decimal?>("DiscountPercent")
-                .HasPrecision(5, 2)
-                .HasColumnType("decimal(5,2)");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasPrecision(0)
                         .HasColumnType("datetime2(0)");
@@ -665,10 +773,11 @@ namespace ZSquare.Infrastructure.Migrations
 
                     b.ToTable("ProductVariants", t =>
                         {
+                            t.HasCheckConstraint("CK_ProductVariants_DiscountPercent", "[DiscountPercent] IS NULL OR ([DiscountPercent] >= 0 AND [DiscountPercent] <= 100)");
+
                             t.HasCheckConstraint("CK_ProductVariants_PriceOverride", "[PriceOverride] IS NULL OR [PriceOverride] >= 0");
 
                             t.HasCheckConstraint("CK_ProductVariants_StockQty", "[StockQty] >= 0");
-                            t.HasCheckConstraint("CK_ProductVariants_DiscountPercent", "[DiscountPercent] IS NULL OR ([DiscountPercent] >= 0 AND [DiscountPercent] <= 100)");
                         });
                 });
 
@@ -817,6 +926,21 @@ namespace ZSquare.Infrastructure.Migrations
                     b.ToTable("Roles");
                 });
 
+            modelBuilder.Entity("ZSquare.Domain.RolePage", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RoleId", "PageId");
+
+                    b.HasIndex("PageId");
+
+                    b.ToTable("RolePages");
+                });
+
             modelBuilder.Entity("ZSquare.Domain.Size", b =>
                 {
                     b.Property<int>("SizeId")
@@ -860,6 +984,9 @@ namespace ZSquare.Infrastructure.Migrations
                         .HasPrecision(0)
                         .HasColumnType("datetime2(0)");
 
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -892,12 +1019,23 @@ namespace ZSquare.Infrastructure.Migrations
                     b.Property<int>("RoleId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("int");
+
                     b.HasKey("UserId");
+
+                    b.HasIndex("CreatedBy");
 
                     b.HasIndex("Email")
                         .IsUnique();
 
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("UpdatedBy");
 
                     b.ToTable("Users");
                 });
@@ -911,6 +1049,16 @@ namespace ZSquare.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ZSquare.Domain.AuditLog", b =>
+                {
+                    b.HasOne("ZSquare.Domain.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Actor");
                 });
 
             modelBuilder.Entity("ZSquare.Domain.Cart", b =>
@@ -951,6 +1099,25 @@ namespace ZSquare.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ParentCategory");
+                });
+
+            modelBuilder.Entity("ZSquare.Domain.InventoryRestockLog", b =>
+                {
+                    b.HasOne("ZSquare.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ZSquare.Domain.ProductVariant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Variant");
                 });
 
             modelBuilder.Entity("ZSquare.Domain.Order", b =>
@@ -1115,13 +1282,42 @@ namespace ZSquare.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ZSquare.Domain.RolePage", b =>
+                {
+                    b.HasOne("ZSquare.Domain.Page", "Page")
+                        .WithMany("RolePages")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ZSquare.Domain.Role", "Role")
+                        .WithMany("RolePages")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("ZSquare.Domain.User", b =>
                 {
+                    b.HasOne("ZSquare.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ZSquare.Domain.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("ZSquare.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Role");
                 });
@@ -1157,6 +1353,11 @@ namespace ZSquare.Infrastructure.Migrations
                     b.Navigation("Orders");
                 });
 
+            modelBuilder.Entity("ZSquare.Domain.Page", b =>
+                {
+                    b.Navigation("RolePages");
+                });
+
             modelBuilder.Entity("ZSquare.Domain.Product", b =>
                 {
                     b.Navigation("Images");
@@ -1175,6 +1376,8 @@ namespace ZSquare.Infrastructure.Migrations
 
             modelBuilder.Entity("ZSquare.Domain.Role", b =>
                 {
+                    b.Navigation("RolePages");
+
                     b.Navigation("Users");
                 });
 

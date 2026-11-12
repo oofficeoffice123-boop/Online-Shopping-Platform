@@ -13,6 +13,27 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
     }
 }
 
+public sealed class PageConfiguration : IEntityTypeConfiguration<Page>
+{
+    public void Configure(EntityTypeBuilder<Page> b)
+    {
+        b.HasKey(x => x.PageId);
+        b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Route).HasMaxLength(200).IsRequired();
+        b.HasIndex(x => x.Route).IsUnique();
+    }
+}
+
+public sealed class RolePageConfiguration : IEntityTypeConfiguration<RolePage>
+{
+    public void Configure(EntityTypeBuilder<RolePage> b)
+    {
+        b.HasKey(x => new { x.RoleId, x.PageId });
+        b.HasOne(x => x.Role).WithMany(x => x.RolePages).HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.Page).WithMany(x => x.RolePages).HasForeignKey(x => x.PageId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> b)
@@ -24,6 +45,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(x => x.Phone).HasMaxLength(30);
         b.Property(x => x.PasswordHash).IsRequired();
         b.HasOne(x => x.Role).WithMany(x => x.Users).HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.UpdatedBy).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

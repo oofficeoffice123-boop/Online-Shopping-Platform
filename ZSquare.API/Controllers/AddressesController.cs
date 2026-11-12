@@ -7,7 +7,7 @@ namespace ZSquare.API.Controllers;
 
 [ApiController]
 [Route("api/addresses")]
-[Authorize(Policy = "CustomerOnly")]
+[Authorize(Policy = "CustomerOrAdmin")]
 public sealed class AddressesController(ICustomerCommerceService commerce) : ControllerBase
 {
     [HttpGet]

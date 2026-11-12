@@ -1,50 +1,25 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { useAuth } from '../auth/AuthContext'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { api } from '../auth/apiClient'
 import { assetUrl } from './productApi'
 import './ManagePage.css'
 
 type Category = { categoryId: number; name: string }
-type AdminUser = { userId: number; fullName: string; email: string; role: string; isActive: boolean; isDeleted: boolean }
-type AdminDashboard = { revenue?: { today: number; last7: number; last30: number }; topProducts?: { productId: number; name: string; units: number }[] }
-
 export default function ManagePage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'Admin'
   const [categories, setCategories] = useState<Category[]>([])
-  const [adminDashboard, setAdminDashboard] = useState<AdminDashboard | null>(null)
-  const [users, setUsers] = useState<AdminUser[]>([])
-  const [adminError, setAdminError] = useState('')
-
-  const loadAdminData = useCallback(async () => {
-    try {
-      const [dashboard, userList] = await Promise.all([
-        api.get<AdminDashboard>('/api/admin/dashboard'),
-        api.get('/api/admin/users', { params: { page: 1, pageSize: 100 } }),
-      ])
-      setAdminDashboard(dashboard.data)
-      setUsers(userList.data.items)
-      setAdminError('')
-    } catch {
-      setAdminError('Admin information could not be loaded.')
-    }
-  }, [])
 
   useEffect(() => {
     void api.get<Category[]>('/api/manage/categories')
       .then(({ data }) => setCategories(data))
       .catch(() => setCategories([]))
   }, [])
-  useEffect(() => { if (isAdmin) void loadAdminData() }, [isAdmin, loadAdminData])
 
   return <main className="manage-page">
     <section className="manager-hero">
-      <div><p className="eyebrow">Z SQUARE · OPERATIONS</p><h1>Inventory control</h1></div>
+      <div><p className="eyebrow">Z SQUARE  |  OPERATIONS</p><h1>Inventory control</h1></div>
       <span className="manager-live"><i /> LIVE INVENTORY</span>
     </section>
     <InventoryWorkspace categories={categories} />
     <OrderWorkspace />
-    {isAdmin && <AdminTools dashboard={adminDashboard} users={users} currentUserId={user?.userId} error={adminError} reload={loadAdminData} />}
   </main>
 }
 type InventoryRow = {
@@ -132,7 +107,7 @@ function InventoryWorkspace({ categories }: { categories: any[] }) {
     try {
       await api.patch(`/api/manage/variants/${row.variantId}/stock`, { set: nextStock, rowVersion: row.rowVersion })
       setEditingId(null)
-      setNotice(`Stock updated for ${row.productName} · ${row.size} · ${row.color}.`)
+      setNotice(`Stock updated for ${row.productName}  |  ${row.size}  |  ${row.color}.`)
       await loadInventory()
     } catch (requestError: any) {
       setNotice(requestError?.response?.status === 409
@@ -158,7 +133,7 @@ function InventoryWorkspace({ categories }: { categories: any[] }) {
         rowVersion: row.rowVersion,
       })
       setEditingPriceId(null)
-      setNotice(`Price updated for ${row.productName} · ${row.size} · ${row.color}.`)
+      setNotice(`Price updated for ${row.productName}  |  ${row.size}  |  ${row.color}.`)
       await loadInventory()
     } catch (requestError: any) {
       setNotice(requestError?.response?.status === 409
@@ -195,8 +170,8 @@ function InventoryWorkspace({ categories }: { categories: any[] }) {
   function tableRows(items: InventoryRow[], compact = false) {
     if (items.length === 0) return <tr><td className="inventory-empty" colSpan={compact ? 4 : 7}>{compact ? 'No low stock items. Nice work.' : 'No inventory matches these filters.'}</td></tr>
     return items.map(row => <tr key={row.variantId} className={row.stockQty < 10 ? 'inventory-row-alert' : ''}>
-      {!compact && <td><div className="inventory-product"><InventoryThumbnail row={row} /><span><strong>{row.productName}</strong><small>{row.productCode} · {row.category}</small></span></div></td>}
-      <td>{compact && <span className="inventory-low-ident"><InventoryThumbnail row={row} /><span><span className="inventory-sku">{row.sku}</span><small>{row.productName} · {row.size} · {row.color}</small></span></span>}{!compact && <span className="inventory-sku">{row.sku}</span>}{compact && <small className="inventory-mobile-product">{row.productName} · {row.size} · {row.color}</small>}</td>
+      {!compact && <td><div className="inventory-product"><InventoryThumbnail row={row} /><span><strong>{row.productName}</strong><small>{row.productCode}  |  {row.category}</small></span></div></td>}
+      <td>{compact && <span className="inventory-low-ident"><InventoryThumbnail row={row} /><span><span className="inventory-sku">{row.sku}</span><small>{row.productName}  |  {row.size}  |  {row.color}</small></span></span>}{!compact && <span className="inventory-sku">{row.sku}</span>}{compact && <small className="inventory-mobile-product">{row.productName}  |  {row.size}  |  {row.color}</small>}</td>
       {!compact && <><td>{row.size}</td><td>{row.color}</td></>}
       <td>{stockControls(row)}</td>
       {!compact && <><td><div className="inventory-price-control">{editingPriceId === row.variantId
@@ -210,14 +185,14 @@ function InventoryWorkspace({ categories }: { categories: any[] }) {
 
   return <div className="inventory-workspace">
     <div className="inventory-metrics">
-      <article><span>Tracked variants</span><strong>{summary?.variantCount ?? '—'}</strong><small>Across active catalog records</small></article>
-      <article><span>Units on hand</span><strong>{summary?.totalUnits.toLocaleString() ?? '—'}</strong><small>Total sellable stock</small></article>
-      <article className="inventory-metric-warn"><span>Running low</span><strong>{summary?.lowStockCount ?? '—'}</strong><small>1–9 units remaining</small></article>
-      <article className="inventory-metric-critical"><span>Out of stock</span><strong>{summary?.outOfStockCount ?? '—'}</strong><small>Needs replenishment</small></article>
+      <article><span>Tracked variants</span><strong>{summary?.variantCount ?? '-'}</strong><small>Across active catalog records</small></article>
+      <article><span>Units on hand</span><strong>{summary?.totalUnits.toLocaleString() ?? '-'}</strong><small>Total sellable stock</small></article>
+      <article className="inventory-metric-warn"><span>Running low</span><strong>{summary?.lowStockCount ?? '-'}</strong><small>1-9 units remaining</small></article>
+      <article className="inventory-metric-critical"><span>Out of stock</span><strong>{summary?.outOfStockCount ?? '-'}</strong><small>Needs replenishment</small></article>
     </div>
 
     <section className="inventory-low-panel">
-      <header className="inventory-section-head"><div><p className="eyebrow">REPLENISHMENT QUEUE</p><h2>Needs attention</h2></div><span className="inventory-alert-count">{summary?.lowStockCount ?? 0} low · {summary?.outOfStockCount ?? 0} out</span></header>
+      <header className="inventory-section-head"><div><p className="eyebrow">REPLENISHMENT QUEUE</p><h2>Needs attention</h2></div><span className="inventory-alert-count">{summary?.lowStockCount ?? 0} low  |  {summary?.outOfStockCount ?? 0} out</span></header>
       <div className="inventory-table-wrap"><table className="inventory-table inventory-low-table"><thead><tr><th>SKU</th><th>Availability</th><th>Stock</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{tableRows(lowRows, true)}</tbody></table></div>
     </section>
 
@@ -230,8 +205,8 @@ function InventoryWorkspace({ categories }: { categories: any[] }) {
       </div>
       {error && <p className="inventory-error" role="alert">{error}</p>}
       {notice && <p className="inventory-notice" role="status">{notice}</p>}
-      <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Product</th><th>SKU</th><th>Size</th><th>Color</th><th>Stock left</th><th>Price</th><th>Status</th></tr></thead><tbody>{loading ? <tr><td className="inventory-empty" colSpan={7}>Loading stock ledger…</td></tr> : tableRows(rows)}</tbody></table></div>
-      <footer className="inventory-pagination"><span>Showing {totalCount ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, totalCount)} of {totalCount}</span><div><IconButton label="Previous page" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}><Icon name="left" /></IconButton><span>Page {page} of {pageCount}</span><IconButton label="Next page" disabled={page >= pageCount || loading} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><Icon name="right" /></IconButton></div></footer>
+      <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Product</th><th>SKU</th><th>Size</th><th>Color</th><th>Stock left</th><th>Price</th><th>Status</th></tr></thead><tbody>{loading ? <tr><td className="inventory-empty" colSpan={7}>Loading stock ledger...</td></tr> : tableRows(rows)}</tbody></table></div>
+      <footer className="inventory-pagination"><span>Showing {totalCount ? (page - 1) * pageSize + 1 : 0}-{Math.min(page * pageSize, totalCount)} of {totalCount}</span><div><IconButton label="Previous page" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}><Icon name="left" /></IconButton><span>Page {page} of {pageCount}</span><IconButton label="Next page" disabled={page >= pageCount || loading} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><Icon name="right" /></IconButton></div></footer>
     </section>
   </div>
 }
@@ -351,7 +326,7 @@ function OrderWorkspace() {
   return <section className="orders-workspace">
     <header className="inventory-section-head orders-head"><div><p className="eyebrow">FULFILMENT DESK</p><h2>Order status</h2></div><IconButton label="Refresh orders" onClick={() => void loadOrders()}><Icon name="refresh" /></IconButton></header>
     <div className="orders-status-cards">
-      <article><span>Placed today</span><strong>{dashboard?.ordersToday ?? '—'}</strong></article>
+      <article><span>Placed today</span><strong>{dashboard?.ordersToday ?? '-'}</strong></article>
       <article className="orders-pending"><span>Pending</span><strong>{statusCount('Pending')}</strong></article>
       <article><span>Paid</span><strong>{statusCount('Paid')}</strong></article>
       <article><span>Shipped</span><strong>{statusCount('Shipped')}</strong></article>
@@ -366,7 +341,7 @@ function OrderWorkspace() {
     {error && <p className="inventory-error" role="alert">{error}</p>}
     {notice && <p className="inventory-notice" role="status">{notice}</p>}
     <div className="inventory-table-wrap"><table className="inventory-table orders-table"><thead><tr><th>Order</th><th>Customer</th><th>Placed</th><th>Items</th><th>Total</th><th>Status</th><th>Next step</th><th><span className="sr-only">Details</span></th></tr></thead><tbody>
-      {loading ? <tr><td className="inventory-empty" colSpan={8}>Loading orders…</td></tr> : orders.length === 0 ? <tr><td className="inventory-empty" colSpan={8}>No orders match these filters.</td></tr> : orders.map(order => <tr key={order.orderId}>
+      {loading ? <tr><td className="inventory-empty" colSpan={8}>Loading orders...</td></tr> : orders.length === 0 ? <tr><td className="inventory-empty" colSpan={8}>No orders match these filters.</td></tr> : orders.map(order => <tr key={order.orderId}>
         <td><strong className="orders-id">#{order.orderId}</strong></td>
         <td className="orders-customer">{order.customer}</td>
         <td>{new Date(order.orderDate).toLocaleDateString()}</td>
@@ -374,20 +349,12 @@ function OrderWorkspace() {
         <td>{money(order.totalAmount)}</td>
         <td><span className={`order-status-chip order-status-${order.name.toLowerCase()}`}>{order.name}</span></td>
         <td>{(nextOrderStatuses[order.name] ?? []).length > 0
-          ? <select aria-label={`Update order ${order.orderId} status`} defaultValue="" disabled={busyOrder === order.orderId} onChange={event => { if (event.target.value) void updateStatus(order, event.target.value) }}><option value="">Choose status…</option>{nextOrderStatuses[order.name].map(next => <option key={next} value={next}>{next}</option>)}</select>
-          : <span className="orders-no-action">—</span>}</td>
+          ? <select aria-label={`Update order ${order.orderId} status`} defaultValue="" disabled={busyOrder === order.orderId} onChange={event => { if (event.target.value) void updateStatus(order, event.target.value) }}><option value="">Choose status...</option>{nextOrderStatuses[order.name].map(next => <option key={next} value={next}>{next}</option>)}</select>
+          : <span className="orders-no-action">-</span>}</td>
         <td><IconButton label={`View order ${order.orderId}`} onClick={() => void openOrder(order.orderId)}><Icon name="eye" /></IconButton></td>
       </tr>)}
     </tbody></table></div>
     <footer className="inventory-pagination"><span>{totalCount.toLocaleString()} orders</span><div><IconButton label="Previous orders page" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}><Icon name="left" /></IconButton><span>Page {page} of {pageCount}</span><IconButton label="Next orders page" disabled={page >= pageCount || loading} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><Icon name="right" /></IconButton></div></footer>
-    {detail && <div className="order-detail-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setDetail(null) }}><section className="order-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="order-detail-title"><header><div><p className="eyebrow">ORDER DETAILS</p><h3 id="order-detail-title">Order #{detail.orderId}</h3></div><IconButton label="Close order details" onClick={() => setDetail(null)}><Icon name="close" /></IconButton></header><div className="order-detail-summary"><span className={`order-status-chip order-status-${detail.status.toLowerCase()}`}>{detail.status}</span><span>{new Date(detail.orderDate).toLocaleString()}</span><strong>{money(detail.totalAmount)}</strong></div><div className="order-detail-columns"><div><h4>Customer</h4><strong>{detail.customer.fullName}</strong><span>{detail.customer.email}</span></div><div><h4>Ship to</h4><strong>{detail.shipName}</strong><span>{detail.shipLine1}{detail.shipLine2 ? `, ${detail.shipLine2}` : ''}</span><span>{detail.shipCity}, {detail.shipPostalCode}</span><span>{detail.shipCountry}</span></div></div><h4 className="order-detail-subhead">Items</h4><div className="order-detail-lines">{detail.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name}<small>{item.quantity} × {money(item.unitPrice)}</small></span><strong>{money(item.lineTotal)}</strong></div>)}</div><h4 className="order-detail-subhead">Payment</h4>{detail.payments.map((payment, index) => <div className="order-payment-line" key={`${payment.method}-${index}`}><span>{payment.method} · {payment.status}</span><strong>{money(payment.amount)}</strong></div>)}</section></div>}
+    {detail && <div className="order-detail-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setDetail(null) }}><section className="order-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="order-detail-title"><header><div><p className="eyebrow">ORDER DETAILS</p><h3 id="order-detail-title">Order #{detail.orderId}</h3></div><IconButton label="Close order details" onClick={() => setDetail(null)}><Icon name="close" /></IconButton></header><div className="order-detail-summary"><span className={`order-status-chip order-status-${detail.status.toLowerCase()}`}>{detail.status}</span><span>{new Date(detail.orderDate).toLocaleString()}</span><strong>{money(detail.totalAmount)}</strong></div><div className="order-detail-columns"><div><h4>Customer</h4><strong>{detail.customer.fullName}</strong><span>{detail.customer.email}</span></div><div><h4>Ship to</h4><strong>{detail.shipName}</strong><span>{detail.shipLine1}{detail.shipLine2 ? `, ${detail.shipLine2}` : ''}</span><span>{detail.shipCity}, {detail.shipPostalCode}</span><span>{detail.shipCountry}</span></div></div><h4 className="order-detail-subhead">Items</h4><div className="order-detail-lines">{detail.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name}<small>{item.quantity} x {money(item.unitPrice)}</small></span><strong>{money(item.lineTotal)}</strong></div>)}</div><h4 className="order-detail-subhead">Payment</h4>{detail.payments.map((payment, index) => <div className="order-payment-line" key={`${payment.method}-${index}`}><span>{payment.method}  |  {payment.status}</span><strong>{money(payment.amount)}</strong></div>)}</section></div>}
   </section>
-}
-
-function AdminTools({ dashboard, users, currentUserId, error, reload }: { dashboard: AdminDashboard | null; users: AdminUser[]; currentUserId?: number; error: string; reload: () => Promise<void> }) {
-  return <details className="manage-admin-tools"><summary><span><strong>Admin reports &amp; team</strong><small>Revenue overview and staff account controls</small></span><span className="manage-summary-mark">+</span></summary><div className="manage-admin-content">
-    {error && <p className="inventory-error" role="alert">{error}</p>}
-    <section><h2>Revenue overview</h2><div className="orders-status-cards admin-revenue-cards"><article><span>Today</span><strong>PKR {(dashboard?.revenue?.today ?? 0).toLocaleString()}</strong></article><article><span>Last 7 days</span><strong>PKR {(dashboard?.revenue?.last7 ?? 0).toLocaleString()}</strong></article><article><span>Last 30 days</span><strong>PKR {(dashboard?.revenue?.last30 ?? 0).toLocaleString()}</strong></article></div><h3>Top products</h3><ol className="admin-top-products">{dashboard?.topProducts?.map(product => <li key={product.productId}><span>{product.name}</span><strong>{product.units} sold</strong></li>)}</ol></section>
-    <section><h2>Team accounts</h2><form className="admin-create-user" onSubmit={async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); try { const { data } = await api.post('/api/admin/users', { fullName: form.get('fullName'), email: form.get('email'), role: form.get('role') }); window.alert(`Initial password (copy now): ${data.initialPassword}`); event.currentTarget.reset(); await reload() } catch { window.alert('Staff account could not be created.') } }}><input name="fullName" placeholder="Full name" required /><input name="email" type="email" placeholder="Email" required /><select name="role"><option>Manager</option><option>Admin</option></select><button type="submit">Create staff account</button></form><div className="admin-user-list">{users.map(person => <article key={person.userId}><span><strong>{person.fullName}</strong><small>{person.email} · {person.role}{person.isDeleted ? ' · Deleted' : ''}</small></span><select disabled={person.isDeleted} value={person.role} aria-label={`Role for ${person.fullName}`} onChange={async event => { await api.patch(`/api/admin/users/${person.userId}/role`, { role: event.target.value }); await reload() }}><option>Customer</option><option>Manager</option><option>Admin</option></select><button type="button" disabled={person.userId === currentUserId || person.isDeleted} onClick={async () => { await api.patch(`/api/admin/users/${person.userId}/active`, { isActive: !person.isActive }); await reload() }}>{person.isActive ? 'Disable' : 'Enable'}</button><button type="button" disabled={person.userId === currentUserId} onClick={async () => { if (person.isDeleted) await api.patch(`/api/admin/users/${person.userId}/deleted`, { isDeleted: false }); else if (window.confirm(`Soft-delete ${person.fullName}?`)) await api.patch(`/api/admin/users/${person.userId}/deleted`, { isDeleted: true }); await reload() }}>{person.isDeleted ? 'Restore' : 'Delete'}</button></article>)}</div></section>
-  </div></details>
 }

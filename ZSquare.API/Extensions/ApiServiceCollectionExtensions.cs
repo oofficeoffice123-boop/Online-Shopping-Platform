@@ -28,6 +28,7 @@ public static class ApiServiceCollectionExtensions
             options.AddPolicy("StaffOnly", policy => policy.RequireRole(Roles.Manager, Roles.Admin));
             options.AddPolicy("AdminOnly", policy => policy.RequireRole(Roles.Admin));
             options.AddPolicy("CustomerOnly", policy => policy.RequireRole(Roles.Customer));
+            options.AddPolicy("CustomerOrAdmin", policy => policy.RequireRole(Roles.Customer, Roles.Admin));
         });
         services.AddApiValidators();
 
@@ -147,9 +148,9 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<IValidator<CategoryRequest>, CategoryRequestValidator>();
         services.AddScoped<IValidator<NameRequest>, NameRequestValidator>();
         services.AddScoped<IValidator<ColorRequest>, ColorRequestValidator>();
-        services.AddScoped<IValidator<CreateStaffRequest>, CreateStaffRequestValidator>();
-        services.AddScoped<IValidator<ChangeUserRoleRequest>, ChangeUserRoleRequestValidator>();
-        services.AddScoped<IValidator<SetUserActiveRequest>, SetUserActiveRequestValidator>();
+        services.AddScoped<IValidator<CreateAdminUserRequest>, CreateAdminUserRequestValidator>();
+        services.AddScoped<IValidator<UpdateAdminUserRequest>, UpdateAdminUserRequestValidator>();
+        services.AddScoped<IValidator<ChangeAdminPasswordRequest>, ChangeAdminPasswordRequestValidator>();
         services.AddScoped<IValidator<ReviewWriteRequest>, ReviewWriteRequestValidator>();
         services.AddScoped<IValidator<SetReviewHiddenRequest>, SetReviewHiddenRequestValidator>();
 

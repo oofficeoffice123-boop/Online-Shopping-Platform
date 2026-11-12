@@ -86,8 +86,8 @@ public sealed class CheckoutRequestValidator : AbstractValidator<CheckoutRequest
     {
         RuleFor(request => request.AddressId).GreaterThan(0);
         RuleFor(request => request.PaymentMethod)
-            .Must(method => method is "CashOnDelivery" or "MockCard")
-            .WithMessage("Payment method must be CashOnDelivery or MockCard.");
+            .Must(method => method == "CashOnDelivery")
+            .WithMessage("Cash on delivery is the only available payment method.");
     }
 }
 

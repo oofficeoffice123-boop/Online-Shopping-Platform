@@ -27,6 +27,24 @@ public sealed class Role
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; }
     public ICollection<User> Users { get; set; } = [];
+    public ICollection<RolePage> RolePages { get; set; } = [];
+}
+
+public sealed class Page
+{
+    public int PageId { get; set; }
+    public string Name { get; set; } = null!;
+    public string Route { get; set; } = null!;
+    public int SortOrder { get; set; }
+    public ICollection<RolePage> RolePages { get; set; } = [];
+}
+
+public sealed class RolePage
+{
+    public int RoleId { get; set; }
+    public int PageId { get; set; }
+    public Role Role { get; set; } = null!;
+    public Page Page { get; set; } = null!;
 }
 
 public sealed class User
@@ -40,6 +58,9 @@ public sealed class User
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public int? UpdatedBy { get; set; }
 
     public Role Role { get; set; } = null!;
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
