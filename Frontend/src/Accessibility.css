@@ -1,0 +1,135 @@
+/* Text on light surfaces must remain readable at small sizes. */
+.brand span,
+.currency,
+.mode-row,
+.auth-nav-muted,
+.auth-form small,
+.optional-label,
+footer {
+  color: #625a51 !important;
+}
+
+.product-meta,
+.browse-product-category,
+.detail-breadcrumb,
+.detail-cart-note,
+.detail-select-group legend span,
+.commerce-summary > small,
+.checkout-address small,
+.checkout-payment-options small,
+.checkout-summary-item small,
+.order-list-main > p:last-child,
+.order-detail-line p:last-child,
+.order-detail-aside p span,
+.order-review-section > .eyebrow,
+.order-review-form form > small {
+  color: #62594f !important;
+}
+
+.browse-sale-price s,
+.detail-sale-price s,
+.detail-size-options button:disabled,
+.checkout-address-form label span {
+  color: #625b54 !important;
+}
+
+.browse-image-placeholder,
+.cart-line-photo,
+.order-detail-image {
+  color: #705b48 !important;
+}
+
+.review-star-bar progress { accent-color: #72551f !important; }
+.review-picker button { color: #72551f !important; }
+
+.admin-page-heading p:last-child,
+.admin-kicker,
+.admin-password-field small,
+.admin-optional,
+.admin-table th,
+.admin-table td > small,
+.admin-empty,
+.admin-pagination,
+.admin-review-header p:last-child,
+.admin-review-meta,
+.admin-review-empty,
+.admin-review-pagination {
+  color: #596456 !important;
+}
+
+.admin-review-rating { color: #72551f !important; }
+
+.inventory-metrics article > small,
+.inventory-section-head > div > p:last-child,
+.inventory-section-head .eyebrow,
+.inventory-low-ident > span:last-child > small,
+.inventory-product small,
+.inventory-empty,
+.inventory-pagination,
+.manage-secondary-tools > summary small,
+.orders-status-cards article > span,
+.orders-no-action,
+.order-detail-dialog .eyebrow,
+.order-detail-dialog h4,
+.order-detail-lines small,
+.admin-user-list article small {
+  color: #625a51 !important;
+}
+
+.inventory-badge-low,
+.orders-status-cards .orders-pending > strong,
+.order-status-pending {
+  color: #6f501b !important;
+}
+
+.inventory-badge-out { color: #81382d !important; }
+.inventory-inactive { color: #625a51 !important; }
+
+.workspace-header .eyebrow,
+.workspace-header > div > p:last-child,
+.metric-card > span,
+.metric-card > small,
+.panel-kicker,
+.panel-subtitle,
+.view-toggle button,
+.chart-y-axis,
+.chart-label,
+.chart-empty,
+.attention-product small,
+.panel-empty,
+.top-seller-rank,
+.top-seller > div small,
+.seller-rank,
+.seller-units,
+.order-status-list span,
+.inventory-page .inventory-section-head > div > p:last-child,
+.inventory-filters label,
+.inventory-selection-bar span,
+.manager-table th,
+.ledger-product small,
+.manager-table code,
+.muted-dash,
+.table-state,
+.ledger-pagination,
+.discount-toolbar > div:first-child small,
+.restock-heading > div > p:last-child,
+.ai-mark i,
+.restock-input-footer > span,
+.restock-preview-heading p,
+.restock-empty,
+.restock-empty small,
+.matched-product small,
+.restock-confirm-row > span,
+.discount-summary {
+  color: #596456 !important;
+}
+
+.workspace-header .eyebrow span { color: #596456 !important; }
+.workspace-quiet-button:hover,
+.workspace-secondary-button:hover:not(:disabled) { color: #42513e !important; }
+.stock-quantity { color: #704d16 !important; }
+.stock-pill-good { color: #405c39 !important; }
+.stock-pill-low { color: #6d4c17 !important; }
+.stock-pill-out { color: #85382e !important; }
+.restock-empty-icon { color: #405c39 !important; }
+.entry-ok { color: #405c39 !important; }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../auth/apiClient'
+import { Feedback } from '../components/ui/Feedback'
 import './ManagePage.css'
 import './ManagerWorkspace.css'
 
@@ -53,7 +54,7 @@ export default function ManagerDashboardPage() {
       <span className="workspace-live"><i /> LIVE OVERVIEW</span>
     </header>
 
-    {error && <div className="workspace-alert" role="alert">{error}</div>}
+    {error && <Feedback className="workspace-alert">{error}</Feedback>}
     {loading ? <div className="workspace-loading">Loading your store overview…</div> : <>
       <section className="metric-grid" aria-label="Inventory summary">
         <article className="metric-card"><span>Tracked variants</span><strong>{summary?.variantCount.toLocaleString() ?? '—'}</strong><small>Across the catalog</small></article>

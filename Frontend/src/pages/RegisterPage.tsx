@@ -2,6 +2,7 @@ import axios from 'axios'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { roleHome } from '../auth/roleHome'
 
 function errorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
@@ -21,7 +22,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (!isLoading && user) return <Navigate to={user.role === 'Customer' ? '/' : '/manage'} replace />
+  if (!isLoading && user) return <Navigate to={roleHome(user.role)} replace state={null} />
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -29,7 +30,7 @@ export default function RegisterPage() {
     setBusy(true)
     try {
       await register({ fullName, email, phone: phone || undefined, password })
-      navigate('/', { replace: true })
+      navigate(roleHome('Customer'), { replace: true, state: null })
     } catch (submitError) {
       setError(errorMessage(submitError))
     } finally {

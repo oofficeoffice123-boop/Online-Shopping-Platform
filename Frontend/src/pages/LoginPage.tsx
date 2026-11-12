@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 function errorMessage(error: unknown) {
@@ -14,8 +14,6 @@ function errorMessage(error: unknown) {
 export default function LoginPage() {
   const { login, logout, user, isLoading } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -34,11 +32,10 @@ export default function LoginPage() {
     setBusy(true)
     try {
       const signedInUser = await login({ email, password })
-      const safeReturnTo = returnTo?.startsWith('/') && !returnTo.startsWith('//') ? returnTo : null
       const landingPage = signedInUser.role === 'Customer'
         ? '/products'
         : signedInUser.role === 'Manager' ? '/manage/dashboard' : '/admin/users'
-      navigate(safeReturnTo ?? landingPage, { replace: true })
+      navigate(landingPage, { replace: true, state: null })
     } catch (submitError) {
       setError(errorMessage(submitError))
     } finally {

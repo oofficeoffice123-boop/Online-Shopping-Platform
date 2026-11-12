@@ -26,10 +26,16 @@ export default function ProtectedRoute({
 }) {
   const { user, isLoading } = useAuth()
   const location = useLocation()
-  if (isLoading || (user && pagesLoading)) return <p className="auth-loading">Restoring your session...</p>
-  if (!user) return <Navigate to="/login" replace state={{ returnTo: `${location.pathname}${location.search}` }} />
+  if (isLoading) return <p className="auth-loading">Restoring your session...</p>
+  if (!user) return <Navigate to="/login" replace state={null} />
   if (pagesError) return <main className="admin-shell"><div className="admin-alert" role="alert">{pagesError} <button type="button" className="admin-secondary" onClick={() => window.location.reload()}>Retry</button></div></main>
+  // Start page data requests while the role-to-page mapping loads. Keep the
+  // content hidden until access is confirmed; the API enforces roles itself.
+  if (pagesLoading) return <>
+    <div hidden>{children}</div>
+    <p className="auth-loading" role="status">Checking page access...</p>
+  </>
 
-  if (!isPageAllowed(location.pathname, allowedPages)) return <Navigate to="/access-denied" replace state={{ requestedPath: location.pathname }} />
+  if (!isPageAllowed(location.pathname, allowedPages)) return <Navigate to="/access-denied" replace state={null} />
   return children
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { assetUrl, colorValue, formatPrice, getProduct, type ProductDetails } from './productApi'
 import { useAuth } from '../auth/AuthContext'
 import { addCartItem, notifyCartUpdated } from './shoppingApi'
@@ -8,7 +8,6 @@ export default function ProductDetailsPage() {
   const { id = '' } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
   const [product, setProduct] = useState<ProductDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -50,7 +49,7 @@ export default function ProductDetailsPage() {
   async function addSelectedVariant() {
     if (!selectedVariant?.inStock) return
     if (!user) {
-      navigate('/login', { state: { returnTo: `${location.pathname}${location.search}` } })
+      navigate('/login', { state: null })
       return
     }
     if (user.role !== 'Customer') {

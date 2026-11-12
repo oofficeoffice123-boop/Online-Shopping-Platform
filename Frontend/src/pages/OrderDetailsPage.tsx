@@ -23,6 +23,9 @@ export default function OrderDetailsPage() {
 
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setOrder(null)
+    setError('')
     getOrder(id).then(result => { if (active) setOrder(result) })
       .catch(() => { if (active) setError('This order was not found.') })
       .finally(() => { if (active) setLoading(false) })

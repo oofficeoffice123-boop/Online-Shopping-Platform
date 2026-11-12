@@ -1,6 +1,7 @@
+import { Fragment, useEffect, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
-import ProtectedRoute, { isPageAllowed } from './auth/ProtectedRoute'
+import ProtectedRoute from './auth/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import ManagePage from './pages/ManagePage'
 import HomePage from './pages/HomePage'
@@ -21,13 +22,13 @@ import AccessDeniedPage from './pages/AccessDeniedPage'
 import { getCart, type Cart } from './pages/shoppingApi'
 import { api } from './auth/apiClient'
 import type { AllowedPage } from './auth/ProtectedRoute'
-import { useEffect, useState } from 'react'
 
 export default function App() {
   const { user, isLoading, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [cart, setCart] = useState<Cart | null>(null)
+  const [cartOwnerId, setCartOwnerId] = useState<number | null>(null)
   const [allowedPages, setAllowedPages] = useState<AllowedPage[]>([])
   const [pagesLoadedForUserId, setPagesLoadedForUserId] = useState<number | null>(null)
   const [pagesError, setPagesError] = useState('')
@@ -62,14 +63,6 @@ export default function App() {
   }, [user])
 
   useEffect(() => {
-    if (location.pathname !== '/access-denied' || !user || pagesLoading) return
-    const requestedPath = (location.state as { requestedPath?: string } | null)?.requestedPath
-    if (requestedPath && isPageAllowed(requestedPath, allowedPages)) {
-      navigate(requestedPath, { replace: true })
-    }
-  }, [allowedPages, location.pathname, location.state, navigate, pagesLoading, user])
-
-  useEffect(() => {
     window.scrollTo(0, 0)
   }, [location.pathname, location.search])
 
@@ -78,13 +71,20 @@ export default function App() {
     async function refreshCart() {
       if (user?.role !== 'Customer') {
         setCart(null)
+        setCartOwnerId(null)
         return
       }
       try {
         const current = await getCart()
-        if (active) setCart(current)
+        if (active) {
+          setCart(current)
+          setCartOwnerId(user.userId)
+        }
       } catch {
-        if (active) setCart(null)
+        if (active) {
+          setCart(null)
+          setCartOwnerId(user.userId)
+        }
       }
     }
     void refreshCart()
@@ -98,7 +98,7 @@ export default function App() {
 
   async function signOut() {
     await logout()
-    navigate('/', { replace: true })
+    navigate('/', { replace: true, state: null })
   }
 
   return <>
@@ -108,7 +108,7 @@ export default function App() {
         <Link to="/">Home</Link>
         {!user && <Link to="/products">Shop</Link>}
         {allowedPages.filter(page => page.route !== '/checkout').map(page => <Link key={page.pageId} to={page.route} className={page.route === '/cart' ? 'cart-nav-link' : undefined}>
-          {page.name === 'Cart' ? <>Bag{cart?.items.length ? <span>{cart.items.reduce((sum, item) => sum + item.quantity, 0)}</span> : null}</> : page.name}
+          {page.name === 'Cart' ? <>Bag{cartOwnerId === user?.userId && cart?.items.length ? <span>{cart.items.reduce((sum, item) => sum + item.quantity, 0)}</span> : null}</> : page.name}
         </Link>)}
       </nav>
       <div className="auth-account">
@@ -118,7 +118,7 @@ export default function App() {
       </div>
     </header>
 
-    <Routes>
+    <Fragment key={user ? `${user.userId}:${user.role}` : 'anonymous'}><Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/products" element={<ProductListPage />} />
       <Route path="/products/:id" element={<ProductDetailsPage />} />
@@ -137,7 +137,7 @@ export default function App() {
       <Route path="/admin/audit-logs" element={<ProtectedRoute allowedPages={allowedPages} pagesLoading={pagesLoading} pagesError={pagesError}><AdminAuditLogPage /></ProtectedRoute>} />
       <Route path="/access-denied" element={<AccessDeniedPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></Fragment>
   </>
 }
 import './App.css'

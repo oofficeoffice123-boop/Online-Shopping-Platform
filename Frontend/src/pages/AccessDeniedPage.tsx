@@ -1,17 +1,16 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
+import { roleHome } from '../auth/roleHome'
 
 export default function AccessDeniedPage() {
-  const location = useLocation()
-  const requestedPath = (location.state as { requestedPath?: string } | null)?.requestedPath
-  const retryPath = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : null
+  const { user } = useAuth()
 
   return <main className="admin-shell">
     <section className="admin-panel" role="status">
       <span className="admin-kicker">ACCESS RESTRICTED</span>
       <h1>You don't have access to this page</h1>
       <p>Your account role does not include this page.</p>
-      {retryPath && <Link className="admin-primary" to={retryPath}>Try the requested page again</Link>}
-      <Link className="admin-primary" to="/">Return home</Link>
+      <Link className="admin-primary" to={roleHome(user?.role)}>Return to your home page</Link>
     </section>
   </main>
 }

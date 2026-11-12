@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../auth/apiClient'
 import { getReviews, type ReviewEligibility, type ReviewPage } from './productApi'
 
 export default function ProductReviews({ productId }: { productId: number }) {
   const { user } = useAuth()
-  const location = useLocation()
   const [reviews, setReviews] = useState<ReviewPage | null>(null)
   const [eligibility, setEligibility] = useState<ReviewEligibility | null>(null)
   const [page, setPage] = useState(1)
@@ -51,7 +50,7 @@ export default function ProductReviews({ productId }: { productId: number }) {
     {reviews && reviews.totalPages>1&&<nav className="review-pagination" aria-label="Review pages"><button disabled={page<=1} onClick={()=>setPage(page-1)}>Previous</button><span>Page {page} of {reviews.totalPages}</span><button disabled={page>=reviews.totalPages} onClick={()=>setPage(page+1)}>Next</button></nav>}
 
     <div className="review-editor"><h3>{eligibility?.existingReview?'Edit your review':'Write a review'}</h3>
-      {!user&&<p><Link to="/login" state={{returnTo:`${location.pathname}${location.search}`}}>Log in to review</Link></p>}
+      {!user&&<p><Link to="/login" state={null}>Log in to review</Link></p>}
       {user&&user.role!=='Customer'&&<p>Customer accounts can submit reviews.</p>}
       {user?.role==='Customer'&&!eligibility&&<p>Checking purchase eligibility…</p>}
       {user?.role==='Customer'&&eligibility&&!eligibility.existingReview&&!eligibility.hasDeliveredPurchase&&<p>Purchase and receive this item to review it.</p>}

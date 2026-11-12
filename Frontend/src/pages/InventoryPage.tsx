@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../auth/apiClient'
+import { Feedback } from '../components/ui/Feedback'
+import { Pagination } from '../components/ui/Pagination'
+import { SelectionCheckbox, TableFrame } from '../components/ui/TableFrame'
 import './ManagePage.css'
 import './ManagerWorkspace.css'
 
@@ -164,7 +167,7 @@ export default function InventoryPage() {
   return <main className="manage-page inventory-page">
     <header className="workspace-header"><div><p className="eyebrow">Z SQUARE <span>/</span> OPERATIONS</p><h1>Inventory</h1></div><span className="workspace-live"><i /> STOCK CONTROL</span></header>
 
-    {error && <div className="workspace-alert" role="alert">{error}</div>}{notice && <div className="workspace-notice" role="status">{notice}</div>}
+    {error && <Feedback className="workspace-alert">{error}</Feedback>}{notice && <Feedback kind="notice" className="workspace-notice">{notice}</Feedback>}
 
     <section className="inventory-main-panel inventory-ledger">
       <header className="inventory-section-head"><div><p className="panel-kicker">CATALOG CONTROL</p><h2>All inventory</h2><p>{total.toLocaleString()} variants in this view</p></div><button className="workspace-quiet-button" onClick={() => void loadInventory()} disabled={loading}>↻ <span>Refresh</span></button></header>
@@ -175,14 +178,14 @@ export default function InventoryPage() {
       </div>
 
       {selected.size > 0 && <div className="inventory-selection-bar"><div><strong>{selected.size} variants selected</strong><span>Across {selectedPageCount} {selectedPageCount === 1 ? 'page' : 'pages'}</span></div><button onClick={() => { setSelected(new Set()); setSelectedOnPage({}) }}>Clear selection</button></div>}
-      <div className="inventory-table-wrap"><table className="inventory-table manager-table"><thead><tr><th><input type="checkbox" aria-label="Select all on current page" checked={rows.length > 0 && rows.every(row => selected.has(row.variantId))} onChange={event => { setSelected(previous => { const next = new Set(previous); rows.forEach(row => event.target.checked ? next.add(row.variantId) : next.delete(row.variantId)); return next }); setSelectedOnPage(previous => { const next = { ...previous }; rows.forEach(row => event.target.checked ? next[row.variantId] = page : delete next[row.variantId]); return next }) }} /></th><th>Product</th><th>SKU</th><th>Category</th><th>Stock on hand</th><th>Price</th><th>Discount</th></tr></thead>
+      <TableFrame className="inventory-table-wrap"><table className="inventory-table manager-table"><thead><tr><th><SelectionCheckbox label="Select all on current page" checked={rows.length > 0 && rows.every(row => selected.has(row.variantId))} onChange={checked => { setSelected(previous => { const next = new Set(previous); rows.forEach(row => checked ? next.add(row.variantId) : next.delete(row.variantId)); return next }); setSelectedOnPage(previous => { const next = { ...previous }; rows.forEach(row => checked ? next[row.variantId] = page : delete next[row.variantId]); return next }) }} /></th><th>Product</th><th>SKU</th><th>Category</th><th>Stock on hand</th><th>Price</th><th>Discount</th></tr></thead>
         <tbody>{loading ? <tr><td colSpan={7} className="table-state">Loading inventory…</td></tr> : !rows.length ? <tr><td colSpan={7} className="table-state">No products match these filters.</td></tr> : rows.map(row => <tr key={row.variantId}>
-          <td><input type="checkbox" aria-label={`Select ${row.productName} ${row.sku}`} checked={selected.has(row.variantId)} onChange={event => { setSelected(previous => { const next = new Set(previous); event.target.checked ? next.add(row.variantId) : next.delete(row.variantId); return next }); setSelectedOnPage(previous => { const next = { ...previous }; event.target.checked ? next[row.variantId] = page : delete next[row.variantId]; return next }) }} /></td>
+          <td><SelectionCheckbox label={`Select ${row.productName} ${row.sku}`} checked={selected.has(row.variantId)} onChange={checked => { setSelected(previous => { const next = new Set(previous); checked ? next.add(row.variantId) : next.delete(row.variantId); return next }); setSelectedOnPage(previous => { const next = { ...previous }; checked ? next[row.variantId] = page : delete next[row.variantId]; return next }) }} /></td>
           <td><div className="ledger-product"><strong>{row.productName}</strong><small>{row.productCode} · {row.size} · {row.color}</small></div></td><td><code>{row.sku}</code></td><td>{row.category}</td>
           <td>{editing === row.variantId ? <div className="stock-edit"><input aria-label={`New stock for ${row.sku}`} type="number" min="0" value={draft} onChange={event => setDraft(event.target.value)} /><button onClick={() => void saveStock(row)}>Save</button><button className="text-action" onClick={() => setEditing(null)}>Cancel</button></div> : <div className="stock-cell"><strong>{row.stockQty}</strong><span className={row.stockQty === 0 ? 'stock-pill stock-pill-out' : row.stockQty < 10 ? 'stock-pill stock-pill-low' : 'stock-pill stock-pill-good'}>{row.stockQty === 0 ? 'Out of stock' : row.stockQty < 10 ? 'Low stock' : 'In stock'}</span><button className="text-action" onClick={() => { setEditing(row.variantId); setDraft(String(row.stockQty)) }}>Edit</button></div>}</td>
           <td>Rs. {row.price.toLocaleString()}</td><td>{row.discountPercent ? <span className="discount-pill">{row.discountPercent}% off</span> : <span className="muted-dash">—</span>}</td>
-        </tr>)}</tbody></table></div>
-      <footer className="ledger-pagination"><span>Showing {total ? (page - 1) * 25 + 1 : 0}–{Math.min(page * 25, total)} of {total.toLocaleString()}</span><div><button disabled={page <= 1 || loading} onClick={() => setPage(value => value - 1)}>Previous</button><span>Page {page} of {Math.max(1, Math.ceil(total / 25))}</span><button disabled={page * 25 >= total || loading} onClick={() => setPage(value => value + 1)}>Next</button></div></footer>
+        </tr>)}</tbody></table></TableFrame>
+      <Pagination className="ledger-pagination" previousClassName="" nextClassName="" page={page} totalPages={Math.max(1, Math.ceil(total / 25))} loading={loading} onPageChange={setPage} summary={<span>Showing {total ? (page - 1) * 25 + 1 : 0}–{Math.min(page * 25, total)} of {total.toLocaleString()}</span>} />
       <div className="discount-toolbar"><div><p className="panel-kicker">BULK PROMOTION</p><strong>Apply one discount to the selection</strong><small>Preview each updated price before applying.</small></div><div className="discount-actions"><label><span className="sr-only">Discount percentage</span><input aria-label="Discount percentage" type="number" min="0" max="100" placeholder="Percent" value={discount} onChange={event => setDiscount(event.target.value)} /></label><button className="workspace-primary-button" disabled={!selected.size || previewLoading} onClick={() => void openDiscountPreview(false)}>{previewLoading ? 'Building preview…' : `Review ${selected.size || ''} selected`}</button><button className="workspace-secondary-button" disabled={!selected.size || previewLoading} onClick={() => void openDiscountPreview(true)}>Remove discount</button></div></div>
     </section>
 
