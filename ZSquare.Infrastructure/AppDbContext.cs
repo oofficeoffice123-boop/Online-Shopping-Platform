@@ -14,6 +14,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Size> Sizes => Set<Size>();
     public DbSet<Color> Colors => Set<Color>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<InventoryRestockLog> InventoryRestockLogs => Set<InventoryRestockLog>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Cart> Carts => Set<Cart>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<OrderStatus> OrderStatuses => Set<OrderStatus>();

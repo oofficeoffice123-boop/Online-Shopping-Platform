@@ -26,7 +26,9 @@ export default function ProductDetailsPage() {
       .then(item => {
         setProduct(item)
         setImageIndex(0)
-        const availableVariant = item.variants.find(variant => variant.inStock) ?? item.variants[0]
+        const availableVariant = item.variants.find(variant => variant.inStock && (variant.discountPercent ?? 0) > 0)
+          ?? item.variants.find(variant => variant.inStock)
+          ?? item.variants[0]
         setSelectedColor(availableVariant?.color ?? '')
         setSelectedSize(availableVariant?.size ?? '')
       })
@@ -39,6 +41,11 @@ export default function ProductDetailsPage() {
   const sizes = useMemo(() => [...new Set(product?.variants.map(variant => variant.size) ?? [])], [product])
   const selectedVariant = product?.variants.find(variant => variant.color === selectedColor && variant.size === selectedSize)
   const currentImage = product?.images[imageIndex]
+  const displayedDiscountPercent = selectedVariant ? selectedVariant.discountPercent : product?.discountPercent
+  const displayedOriginalPrice = selectedVariant ? selectedVariant.originalPrice : product?.originalPrice
+  const selectedSalePrice = selectedVariant?.discountPercent && selectedVariant.originalPrice
+    ? Math.round((selectedVariant.originalPrice * (100 - selectedVariant.discountPercent) / 100 + Number.EPSILON) * 100) / 100
+    : selectedVariant?.price ?? product?.price
 
   async function addSelectedVariant() {
     if (!selectedVariant?.inStock) return
@@ -78,7 +85,9 @@ export default function ProductDetailsPage() {
       <section className="detail-info">
         <p className="eyebrow">{product.categoryName}</p>
         <h1>{product.name}</h1>
-        <p className="detail-price">{formatPrice(selectedVariant?.price ?? product.price)}</p>
+        {displayedDiscountPercent && displayedOriginalPrice
+          ? <div className="detail-sale-price"><s>{formatPrice(displayedOriginalPrice)}</s><strong>{formatPrice(selectedSalePrice ?? product.price)}</strong><span>{displayedDiscountPercent}% OFF</span></div>
+          : <p className="detail-price">{formatPrice(selectedSalePrice ?? product.price)}</p>}
         <p className="detail-stock">{selectedVariant ? selectedVariant.inStock ? selectedVariant.lowStock ? 'Low stock — order soon' : 'In stock' : 'Out of stock' : 'Select a size and color'}</p>
         {product.description && <p className="detail-description">{product.description}</p>}
 

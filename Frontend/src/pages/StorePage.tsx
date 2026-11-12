@@ -31,7 +31,7 @@ const emptyFilters: Filters = {
   size: null, sort: null, page: 1, pageSize: 20,
 }
 
-const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7115'
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5264'
 
 export default function StorePage() {
   const [query, setQuery] = useState('')

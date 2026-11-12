@@ -134,15 +134,43 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
         b.HasIndex(x => new { x.ProductId, x.SizeId, x.ColorId }).IsUnique();
         b.Property(x => x.SKU).HasMaxLength(100).IsRequired();
         b.Property(x => x.PriceOverride).HasPrecision(10, 2);
+        b.Property(x => x.DiscountPercent).HasPrecision(5, 2);
         b.Property(x => x.RowVersion).IsRowVersion();
         b.ToTable(t =>
         {
             t.HasCheckConstraint("CK_ProductVariants_StockQty", "[StockQty] >= 0");
+            t.HasCheckConstraint("CK_ProductVariants_DiscountPercent", "[DiscountPercent] IS NULL OR ([DiscountPercent] >= 0 AND [DiscountPercent] <= 100)");
             t.HasCheckConstraint("CK_ProductVariants_PriceOverride", "[PriceOverride] IS NULL OR [PriceOverride] >= 0");
         });
         b.HasOne(x => x.Product).WithMany(x => x.Variants).HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.Size).WithMany(x => x.Variants).HasForeignKey(x => x.SizeId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Color).WithMany(x => x.Variants).HasForeignKey(x => x.ColorId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class InventoryRestockLogConfiguration : IEntityTypeConfiguration<InventoryRestockLog>
+{
+    public void Configure(EntityTypeBuilder<InventoryRestockLog> b)
+    {
+        b.HasKey(x => x.InventoryRestockLogId);
+        b.HasIndex(x => x.RestockedAt);
+        b.HasOne(x => x.Variant).WithMany().HasForeignKey(x => x.VariantId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+{
+    public void Configure(EntityTypeBuilder<AuditLog> b)
+    {
+        b.HasKey(x => x.AuditLogId);
+        b.Property(x => x.Action).HasMaxLength(100).IsRequired();
+        b.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
+        b.Property(x => x.EntityId).HasMaxLength(100);
+        b.Property(x => x.DetailsJson).HasMaxLength(4000);
+        b.HasIndex(x => x.CreatedAt);
+        b.HasIndex(x => new { x.EntityType, x.EntityId });
+        b.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
     }
 }
 

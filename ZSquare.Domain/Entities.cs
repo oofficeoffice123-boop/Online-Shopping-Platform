@@ -155,6 +155,7 @@ public sealed class ProductVariant
     public string SKU { get; set; } = null!;
     public decimal? PriceOverride { get; set; }
     public int StockQty { get; set; }
+    public decimal? DiscountPercent { get; set; }
     public byte[] RowVersion { get; set; } = [];
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; }
@@ -166,6 +167,30 @@ public sealed class ProductVariant
     public Color Color { get; set; } = null!;
     public ICollection<CartItem> CartItems { get; set; } = [];
     public ICollection<OrderItem> OrderItems { get; set; } = [];
+}
+
+public sealed class InventoryRestockLog
+{
+    public int InventoryRestockLogId { get; set; }
+    public int VariantId { get; set; }
+    public int UserId { get; set; }
+    public int QuantityAdded { get; set; }
+    public int PreviousStock { get; set; }
+    public DateTime RestockedAt { get; set; }
+    public ProductVariant Variant { get; set; } = null!;
+    public User User { get; set; } = null!;
+}
+
+public sealed class AuditLog
+{
+    public long AuditLogId { get; set; }
+    public int? ActorUserId { get; set; }
+    public string Action { get; set; } = null!;
+    public string EntityType { get; set; } = null!;
+    public string? EntityId { get; set; }
+    public string? DetailsJson { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public User? Actor { get; set; }
 }
 
 public sealed class Cart

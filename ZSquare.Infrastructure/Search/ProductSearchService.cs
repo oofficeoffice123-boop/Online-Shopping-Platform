@@ -56,8 +56,12 @@ public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : 
                 (colors.Length == 0 || colors.Contains(variant.Color.Name)) &&
                 (sizes.Length == 0 || sizes.Contains(variant.Size.Label)) &&
                 (!filters.InStockOnly || variant.StockQty > 0) &&
-                (min == null || (variant.PriceOverride ?? product.BasePrice) >= min) &&
-                (max == null || (variant.PriceOverride ?? product.BasePrice) <= max)) ||
+                (min == null || (variant.DiscountPercent.HasValue
+                    ? (variant.PriceOverride ?? product.BasePrice) * (100 - variant.DiscountPercent.Value) / 100
+                    : variant.PriceOverride ?? product.BasePrice) >= min) &&
+                (max == null || (variant.DiscountPercent.HasValue
+                    ? (variant.PriceOverride ?? product.BasePrice) * (100 - variant.DiscountPercent.Value) / 100
+                    : variant.PriceOverride ?? product.BasePrice) <= max)) ||
                 (!product.Variants.Any() && colors.Length == 0 && sizes.Length == 0 && !filters.InStockOnly &&
                  (min == null || product.BasePrice >= min) && (max == null || product.BasePrice <= max)));
         }
@@ -67,7 +71,9 @@ public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : 
             .Select(variant => new
             {
                 variant.ProductId,
-                Price = variant.PriceOverride ?? variant.Product.BasePrice
+                Price = variant.DiscountPercent.HasValue
+                    ? (variant.PriceOverride ?? variant.Product.BasePrice) * (100 - variant.DiscountPercent.Value) / 100
+                    : variant.PriceOverride ?? variant.Product.BasePrice
             })
             .GroupBy(variant => variant.ProductId)
             .Select(group => new { ProductId = group.Key, Price = group.Min(variant => variant.Price) });
@@ -113,7 +119,7 @@ public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : 
             : await db.ProductVariants.AsNoTracking().Where(variant => productIds.Contains(variant.ProductId))
                 .Select(variant => new ProductVariantRow(
                     variant.ProductId, variant.Color.Name, variant.Size.Label,
-                    variant.PriceOverride ?? variant.Product.BasePrice, variant.StockQty))
+                    variant.PriceOverride ?? variant.Product.BasePrice, variant.DiscountPercent, variant.StockQty))
                 .ToListAsync(cancellationToken);
         var imagesByProduct = imageRows.GroupBy(image => image.ProductId).ToDictionary(group => group.Key, group => group.ToList());
         var variantsByProduct = variantRows.GroupBy(variant => variant.ProductId).ToDictionary(group => group.Key, group => group.ToList());
@@ -124,12 +130,16 @@ public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : 
             productImages ??= [];
             productVariants ??= [];
             var orderedImages = productImages.OrderByDescending(image => image.IsPrimary).ThenBy(image => image.SortOrder).ToArray();
+            var priceVariant = productVariants.OrderBy(variant => DiscountedPrice(variant.Price, variant.DiscountPercent)).FirstOrDefault();
+            var currentPrice = priceVariant is null ? product.BasePrice : DiscountedPrice(priceVariant.Price, priceVariant.DiscountPercent);
             return new ProductCardDto(
                 product.Id, product.ProductCode, product.Name, product.Description, product.CategoryName,
-                productVariants.Count > 0 ? productVariants.Min(variant => variant.Price) : product.BasePrice,
+                currentPrice,
                 orderedImages.FirstOrDefault()?.Url)
             {
                 SecondaryImageUrl = orderedImages.Skip(1).FirstOrDefault()?.Url,
+                OriginalPrice = priceVariant?.DiscountPercent > 0 ? priceVariant.Price : null,
+                DiscountPercent = priceVariant?.DiscountPercent > 0 ? priceVariant.DiscountPercent : null,
                 AvailableColors = productVariants.Where(variant => variant.StockQty > 0).Select(variant => variant.Color)
                     .Distinct().OrderBy(color => color).ToArray(),
                 InStock = productVariants.Any(variant => variant.StockQty > 0),
@@ -172,13 +182,20 @@ public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : 
             .Select(variant => new ProductVariantDto(
                 variant.VariantId, variant.Size.Label, variant.Color.Name,
                 variant.PriceOverride ?? variant.Product.BasePrice,
-                variant.StockQty > 0, variant.StockQty > 0 && variant.StockQty <= 5))
+                variant.StockQty > 0, variant.StockQty > 0 && variant.StockQty <= 5)
+            {
+                OriginalPrice = variant.DiscountPercent > 0 ? variant.PriceOverride ?? variant.Product.BasePrice : null,
+                DiscountPercent = variant.DiscountPercent > 0 ? variant.DiscountPercent : null
+            })
             .ToListAsync(cancellationToken);
 
-        var price = variants.Count > 0 ? variants.Min(variant => variant.Price) : product.BasePrice;
+        var priceVariant = variants.OrderBy(variant => DiscountedPrice(variant.Price, variant.DiscountPercent)).FirstOrDefault();
+        var price = priceVariant is not null ? DiscountedPrice(priceVariant.Price, priceVariant.DiscountPercent) : product.BasePrice;
         return new ProductDetailsDto(product.Id, product.ProductCode, product.Name, product.Description,
             product.CategoryName, price, images, variants)
         {
+            OriginalPrice = priceVariant?.OriginalPrice,
+            DiscountPercent = priceVariant?.DiscountPercent,
             AverageRating = product.AverageRating is null ? null : decimal.Round(product.AverageRating.Value, 1),
             ReviewCount = product.ReviewCount
         };
@@ -227,5 +244,8 @@ public sealed class ProductSearchService(AppDbContext db, IMemoryCache cache) : 
 
     private sealed record ProductImageRow(int ProductId, string Url, bool IsPrimary, int SortOrder);
 
-    private sealed record ProductVariantRow(int ProductId, string Color, string Size, decimal Price, int StockQty);
+    private static decimal DiscountedPrice(decimal price, decimal? discountPercent) =>
+        discountPercent is > 0 ? decimal.Round(price * (100 - discountPercent.Value) / 100, 2, MidpointRounding.AwayFromZero) : price;
+
+    private sealed record ProductVariantRow(int ProductId, string Color, string Size, decimal Price, decimal? DiscountPercent, int StockQty);
 }

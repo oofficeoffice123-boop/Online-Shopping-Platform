@@ -32,7 +32,8 @@ public sealed class AiProductFilterInterpreter(HttpClient httpClient, IConfigura
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userQuery }
             },
-            max_completion_tokens = 300,
+            // GPT-OSS uses part of this budget for reasoning before emitting the JSON payload.
+            max_completion_tokens = 1000,
             response_format = new { type = "json_object" }
         });
 

@@ -8,6 +8,8 @@ export type ProductCard = {
   categoryName: string
   category: string
   price: number
+  originalPrice?: number | null
+  discountPercent?: number | null
   primaryImageUrl: string | null
   secondaryImageUrl: string | null
   availableColors: string[]
@@ -46,8 +48,10 @@ export type ProductDetails = {
   description: string | null
   categoryName: string
   price: number
+  originalPrice?: number | null
+  discountPercent?: number | null
   images: { id: number; url: string; isPrimary: boolean; sortOrder: number }[]
-  variants: { variantId: number; size: string; color: string; price: number; inStock: boolean; lowStock: boolean }[]
+  variants: { variantId: number; size: string; color: string; price: number; originalPrice?: number | null; discountPercent?: number | null; inStock: boolean; lowStock: boolean }[]
   averageRating: number | null
   reviewCount: number
 }

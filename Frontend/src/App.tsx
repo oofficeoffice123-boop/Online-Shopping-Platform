@@ -13,6 +13,8 @@ import MyOrdersPage from './pages/MyOrdersPage'
 import OrderDetailsPage from './pages/OrderDetailsPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
 import ManageReviewsPage from './pages/ManageReviewsPage'
+import ManagerDashboardPage from './pages/ManagerDashboardPage'
+import InventoryPage from './pages/InventoryPage'
 import { getCart, type Cart } from './pages/shoppingApi'
 import { useEffect, useState } from 'react'
 
@@ -61,7 +63,7 @@ export default function App() {
         <Link to="/">Home</Link>
         <Link to="/products">Shop</Link>
         {user?.role === 'Customer' && <><Link to="/orders">My orders</Link><Link to="/cart" className="cart-nav-link">Bag{cart?.items.length ? <span>{cart.items.reduce((sum, item) => sum + item.quantity, 0)}</span> : null}</Link></>}
-        {user && (user.role === 'Manager' || user.role === 'Admin') && <><Link to="/manage">Manage</Link><Link to="/manage/reviews">Review moderation</Link></>}
+        {user && (user.role === 'Manager' || user.role === 'Admin') && <><Link to="/manage/dashboard">Dashboard</Link><Link to="/manage/inventory">Inventory</Link><Link to="/manage">Manage</Link><Link to="/manage/reviews">Review moderation</Link></>}
       </nav>
       <div className="auth-account">
         {isLoading ? <span className="auth-nav-muted">Restoring session…</span> : user
@@ -82,6 +84,8 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/manage" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><ManagePage /></ProtectedRoute>} />
+      <Route path="/manage/dashboard" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><ManagerDashboardPage /></ProtectedRoute>} />
+      <Route path="/manage/inventory" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><InventoryPage /></ProtectedRoute>} />
       <Route path="/manage/reviews" element={<ProtectedRoute allowedRoles={['Manager', 'Admin']}><ManageReviewsPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

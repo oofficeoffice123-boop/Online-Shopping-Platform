@@ -39,7 +39,7 @@ export default function ManagePage() {
 
   return <main className="manage-page">
     <section className="manager-hero">
-      <div><p className="eyebrow">Z SQUARE · OPERATIONS</p><h1>Inventory control</h1><p>Good to see you, {user?.fullName}. Keep the shelves and orders moving.</p></div>
+      <div><p className="eyebrow">Z SQUARE · OPERATIONS</p><h1>Inventory control</h1></div>
       <span className="manager-live"><i /> LIVE INVENTORY</span>
     </section>
     <InventoryWorkspace categories={categories} />
@@ -217,7 +217,7 @@ function InventoryWorkspace({ categories }: { categories: any[] }) {
     </div>
 
     <section className="inventory-low-panel">
-      <header className="inventory-section-head"><div><p className="eyebrow">REPLENISHMENT QUEUE</p><h2>Needs attention</h2><p>Low and unavailable variants, sorted by urgency.</p></div><span className="inventory-alert-count">{summary?.lowStockCount ?? 0} low · {summary?.outOfStockCount ?? 0} out</span></header>
+      <header className="inventory-section-head"><div><p className="eyebrow">REPLENISHMENT QUEUE</p><h2>Needs attention</h2></div><span className="inventory-alert-count">{summary?.lowStockCount ?? 0} low · {summary?.outOfStockCount ?? 0} out</span></header>
       <div className="inventory-table-wrap"><table className="inventory-table inventory-low-table"><thead><tr><th>SKU</th><th>Availability</th><th>Stock</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{tableRows(lowRows, true)}</tbody></table></div>
     </section>
 
@@ -349,7 +349,7 @@ function OrderWorkspace() {
   const money = (value: number) => `PKR ${value.toLocaleString()}`
 
   return <section className="orders-workspace">
-    <header className="inventory-section-head orders-head"><div><p className="eyebrow">FULFILMENT DESK</p><h2>Order status</h2><p>Review incoming orders and move each one through fulfilment.</p></div><IconButton label="Refresh orders" onClick={() => void loadOrders()}><Icon name="refresh" /></IconButton></header>
+    <header className="inventory-section-head orders-head"><div><p className="eyebrow">FULFILMENT DESK</p><h2>Order status</h2></div><IconButton label="Refresh orders" onClick={() => void loadOrders()}><Icon name="refresh" /></IconButton></header>
     <div className="orders-status-cards">
       <article><span>Placed today</span><strong>{dashboard?.ordersToday ?? '—'}</strong></article>
       <article className="orders-pending"><span>Pending</span><strong>{statusCount('Pending')}</strong></article>

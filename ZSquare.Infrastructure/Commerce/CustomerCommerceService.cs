@@ -22,6 +22,7 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
                 ImageUrl = item.Variant.Product.Images.OrderByDescending(image => image.IsPrimary)
                     .ThenBy(image => image.SortOrder).Select(image => image.Url).FirstOrDefault(),
                 UnitPrice = item.Variant.PriceOverride ?? item.Variant.Product.BasePrice,
+                item.Variant.DiscountPercent,
                 item.Quantity,
                 item.Variant.Product.IsActive,
                 item.Variant.StockQty
@@ -30,7 +31,7 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
 
         var items = rows.Select(row =>
         {
-            var unitPrice = Money(row.UnitPrice);
+            var unitPrice = Money(row.DiscountPercent.HasValue ? row.UnitPrice * (100 - row.DiscountPercent.Value) / 100 : row.UnitPrice);
             var active = row.IsActive;
             var enoughStock = row.StockQty >= row.Quantity;
             return new CartLineDto(
@@ -215,7 +216,8 @@ public sealed class CustomerCommerceService(AppDbContext db) : ICustomerCommerce
                 : pending;
             var orderItems = cart.Items.Select(item =>
             {
-                var unitPrice = Money(item.Variant.PriceOverride ?? item.Variant.Product.BasePrice);
+                var basePrice = item.Variant.PriceOverride ?? item.Variant.Product.BasePrice;
+                var unitPrice = Money(item.Variant.DiscountPercent.HasValue ? basePrice * (100 - item.Variant.DiscountPercent.Value) / 100 : basePrice);
                 item.Variant.StockQty -= item.Quantity;
                 item.Variant.UpdatedAt = now;
                 item.Variant.UpdatedBy = userId;

@@ -6,6 +6,8 @@ using ZSquare.API.Security;
 using ZSquare.Domain;
 using ZSquare.Infrastructure;
 using ZSquare.Infrastructure.Commerce;
+using ZSquare.Application.Search;
+using System.Text.Json;
 
 namespace ZSquare.API.Controllers;
 
@@ -37,6 +39,7 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
         string? search = null,
         int? categoryId = null,
         string? stock = null,
+        string? sort = null,
         CancellationToken ct = default)
     {
         page = Math.Max(1, page);
@@ -70,10 +73,15 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
         };
 
         var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(variant => variant.StockQty)
-            .ThenBy(variant => variant.Product.Name)
-            .ThenBy(variant => variant.SKU)
+        var ordered = sort?.ToLowerInvariant() switch
+        {
+            "name" => query.OrderBy(v => v.Product.Name),
+            "price" => query.OrderBy(v => v.PriceOverride ?? v.Product.BasePrice),
+            "stock-desc" => query.OrderByDescending(v => v.StockQty),
+            "stock" => query.OrderBy(v => v.StockQty),
+            _ => query.OrderBy(v => v.StockQty).ThenBy(v => v.Product.Name)
+        };
+        var items = await ordered.ThenBy(variant => variant.SKU)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(variant => new
@@ -88,6 +96,7 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
                 color = variant.Color.Name,
                 variant.StockQty,
                 price = variant.PriceOverride ?? variant.Product.BasePrice,
+                variant.DiscountPercent,
                 productActive = variant.Product.IsActive,
                 variantActive = variant.IsActive,
                 imageUrl = variant.Product.Images.OrderBy(image => image.SortOrder).Select(image => image.Url).FirstOrDefault(),
@@ -190,6 +199,91 @@ public sealed class ManageController(AppDbContext db, IWebHostEnvironment env, I
     public async Task<IActionResult> Dashboard(CancellationToken ct)
     {var today=PakistanClock.Now.Date;var byStatus=await db.Orders.AsNoTracking().GroupBy(o=>o.Status.Name).Select(g=>new{status=g.Key,count=g.Count()}).ToListAsync(ct);var recent=await db.Orders.AsNoTracking().OrderByDescending(o=>o.OrderDate).Take(10).Select(o=>new{o.OrderId,o.OrderDate,status=o.Status.Name,o.TotalAmount,customer=o.User.Email}).ToListAsync(ct);var low=await db.ProductVariants.AsNoTracking().Where(v=>v.StockQty<=5).OrderBy(v=>v.StockQty).Take(100).Select(v=>new{v.VariantId,v.SKU,v.StockQty,product=v.Product.Name,size=v.Size.Label,color=v.Color.Name}).ToListAsync(ct);return Ok(new{ordersByStatus=byStatus,ordersToday=await db.Orders.CountAsync(o=>o.OrderDate>=today,ct),lowStockVariants=low,recentOrders=recent});}
 
+    [HttpPost("discounts/bulk"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> BulkDiscount(BulkDiscountRequest request, CancellationToken ct)
+    {
+        if (request.VariantIds.Count == 0 || request.VariantIds.Count > 500 || request.VariantIds.Distinct().Count() != request.VariantIds.Count || request.Percent is < 0 or > 100)
+            return ValidationProblem(new Dictionary<string,string[]> { ["request"] = ["Select 1–500 unique variants and a discount from 0 to 100 percent."] });
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var variants = await db.ProductVariants.Where(v => request.VariantIds.Contains(v.VariantId) && !v.IsDeleted).ToListAsync(ct);
+        if (variants.Count != request.VariantIds.Count) return NotFound();
+        foreach (var variant in variants) { variant.DiscountPercent = request.Remove ? null : request.Percent; variant.UpdatedAt = PakistanClock.Now; variant.UpdatedBy = User.GetUserId(); }
+        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        return Ok(new { updated = variants.Count });
+    }
+
+    [HttpPost("discounts/preview"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> PreviewBulkDiscount(BulkDiscountRequest request, CancellationToken ct)
+    {
+        if (request.VariantIds.Count == 0 || request.VariantIds.Count > 500 || request.VariantIds.Distinct().Count() != request.VariantIds.Count || request.Percent is < 0 or > 100)
+            return ValidationProblem(new Dictionary<string,string[]> { ["request"] = ["Select 1–500 unique variants and a discount from 0 to 100 percent."] });
+        var variants = await db.ProductVariants.AsNoTracking().Where(v => request.VariantIds.Contains(v.VariantId) && !v.IsDeleted && !v.Product.IsDeleted)
+            .Select(v => new { v.VariantId, v.ProductId, product = v.Product.Name, v.SKU, basePrice = v.PriceOverride ?? v.Product.BasePrice, v.DiscountPercent }).ToListAsync(ct);
+        if (variants.Count != request.VariantIds.Count) return NotFound();
+        var items = variants.Select(v =>
+        {
+            var oldPrice = v.DiscountPercent.HasValue ? v.basePrice * (100 - v.DiscountPercent.Value) / 100 : v.basePrice;
+            var newPrice = request.Remove ? v.basePrice : v.basePrice * (100 - request.Percent) / 100;
+            oldPrice = decimal.Round(oldPrice, 2, MidpointRounding.AwayFromZero);
+            newPrice = decimal.Round(newPrice, 2, MidpointRounding.AwayFromZero);
+            return new { v.VariantId, v.ProductId, productName = v.product, v.SKU, oldPrice, newPrice,
+                warning = v.DiscountPercent.HasValue ? $"Existing {v.DiscountPercent}% discount will be replaced." : null };
+        }).OrderBy(x => x.productName).ThenBy(x => x.SKU).ToList();
+        var averageDrop = items.Count == 0 ? 0 : decimal.Round(items.Average(x => x.oldPrice - x.newPrice), 2, MidpointRounding.AwayFromZero);
+        return Ok(new { affectedCount = items.Count, percent = request.Remove ? 0 : request.Percent, remove = request.Remove, averagePriceDrop = averageDrop, warnings = items.Where(x => x.warning != null).Select(x => x.warning).Distinct().ToArray(), items });
+    }
+
+    [HttpPost("restock/bulk"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> BulkRestock(BulkRestockRequest request, CancellationToken ct)
+    {
+        if (request.Items.Count == 0 || request.Items.Count > 500 || request.Items.Any(i => string.IsNullOrWhiteSpace(i.Sku) || i.Quantity <= 0))
+            return ValidationProblem(new Dictionary<string,string[]> { ["items"] = ["Provide 1–500 SKU entries with positive quantities."] });
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var variants = await db.ProductVariants.Where(v => request.Items.Select(i => i.Sku).Contains(v.SKU) && !v.IsDeleted).ToListAsync(ct);
+        if (variants.Count != request.Items.Count || request.Items.Select(i => i.Sku).Distinct(StringComparer.OrdinalIgnoreCase).Count() != request.Items.Count)
+            return ValidationProblem(new Dictionary<string,string[]> { ["items"] = ["Each SKU must match exactly one variant and appear once."] });
+        foreach (var item in request.Items) { var variant = variants.Single(v => v.SKU == item.Sku); if ((long)variant.StockQty + item.Quantity > int.MaxValue) return ConflictProblem($"Restock exceeds the stock limit for {item.Sku}."); db.InventoryRestockLogs.Add(new InventoryRestockLog { VariantId = variant.VariantId, UserId = User.GetUserId(), QuantityAdded = item.Quantity, PreviousStock = variant.StockQty, RestockedAt = PakistanClock.Now }); variant.StockQty += item.Quantity; variant.UpdatedAt = PakistanClock.Now; variant.UpdatedBy = User.GetUserId(); }
+        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        return Ok(new { updated = variants.Count });
+    }
+
+    [HttpPost("restock/parse"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> ParseRestock(RestockParseRequest request, [FromServices] IProductFilterInterpreter interpreter, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Text) || request.Text.Length > 10000)
+            return ValidationProblem(new Dictionary<string,string[]> { ["text"] = ["Enter a restock list up to 10,000 characters."] });
+        try
+        {
+            var json = await interpreter.InterpretAsync("Extract only SKU and positive integer quantity pairs from the manager's inventory restock input. Return JSON only in this exact shape: {\"items\":[{\"sku\":\"SKU\",\"quantity\":1}]}. Do not match products, invent values, or include explanations. If an entry is unclear, omit it.", request.Text, ct);
+            using var doc = JsonDocument.Parse(json);
+            var items = doc.RootElement.GetProperty("items").EnumerateArray().Select(x => new RestockLineRequest(x.GetProperty("sku").GetString() ?? "", x.GetProperty("quantity").GetInt32())).ToList();
+            if (items.Count == 0 || items.Count > 500 || items.Any(x => string.IsNullOrWhiteSpace(x.Sku) || x.Quantity <= 0)) return BadRequest("AI could not extract valid SKU and quantity pairs.");
+            return Ok(new { items });
+        }
+        catch (Exception ex) when (ex is InvalidDataException or JsonException or KeyNotFoundException or InvalidOperationException or HttpRequestException)
+        {
+            log.LogWarning(ex, "Restock list parsing failed");
+            return Problem("Could not parse the restock list. Check AI configuration or enter SKU x quantity pairs directly.", statusCode: 503);
+        }
+    }
+
+    [HttpGet("sales"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> Sales([FromQuery] string view = "monthly", [FromQuery] int period = 0, [FromQuery] int year = 0, CancellationToken ct = default)
+    {
+        var now = PakistanClock.Now; year = year == 0 ? now.Year : year; var month = view == "monthly" ? (period == 0 ? now.Month : period) : 1;
+        if (view is not ("monthly" or "yearly") || year < 2000 || year > now.Year || month is < 1 or > 12) return BadRequest("Invalid sales period.");
+        var start = new DateTime(year, month, 1); var end = view == "monthly" ? start.AddMonths(1) : new DateTime(year, 1, 1).AddYears(1);
+        var rows = await db.OrderItems.AsNoTracking().Where(i => i.Order.OrderDate >= start && i.Order.OrderDate < end && i.Order.Status.Name != "Cancelled")
+            .GroupBy(i => view == "monthly" ? i.Order.OrderDate.Day : i.Order.OrderDate.Month)
+            .Select(g => new { bucket = g.Key, revenue = g.Sum(i => i.UnitPrice * i.Quantity), units = g.Sum(i => i.Quantity) }).ToListAsync(ct);
+        var count = view == "monthly" ? DateTime.DaysInMonth(year, month) : 12;
+        return Ok(new { view, year, month, items = Enumerable.Range(1, count).Select(i => new { bucket = i, revenue = rows.Where(r => r.bucket == i).Sum(r => r.revenue), units = rows.Where(r => r.bucket == i).Sum(r => r.units) }) });
+    }
+
+    [HttpGet("best-sellers"), Authorize(Policy = "StaffOnly")]
+    public async Task<IActionResult> BestSellers(CancellationToken ct) => Ok(await db.OrderItems.AsNoTracking().Where(i => i.Order.Status.Name != "Cancelled")
+        .GroupBy(i => new { i.Variant.ProductId, i.Variant.Product.Name }).Select(g => new { productId = g.Key.ProductId, name = g.Key.Name, unitsSold = g.Sum(i => i.Quantity), revenue = g.Sum(i => i.UnitPrice * i.Quantity) }).OrderByDescending(x => x.unitsSold).Take(5).ToListAsync(ct));
+
     [HttpGet("~/api/admin/dashboard"), Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> AdminDashboard(CancellationToken ct)
     {
@@ -261,6 +355,10 @@ public sealed record ProductRequest(string ProductCode,string Name,string? Descr
 public sealed record ActiveRequest(bool IsActive);
 public sealed record VariantCreateRequest(int SizeId,int ColorId,string? Sku,decimal? PriceOverride,int StockQty);
 public sealed record VariantUpdateRequest(decimal? PriceOverride,int StockQty,string RowVersion);
+public sealed record BulkDiscountRequest(List<int> VariantIds, decimal Percent, bool Remove = false);
+public sealed record RestockLineRequest(string Sku, int Quantity);
+public sealed record BulkRestockRequest(List<RestockLineRequest> Items);
+public sealed record RestockParseRequest(string Text);
 public sealed record StockRequest(long? Delta,int? Set,string RowVersion);
 public sealed record StatusRequest(string Status);
 public sealed record ImageOrderRequest(IReadOnlyList<int> ImageIds);

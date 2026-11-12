@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 
-const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7115'
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5264'
 
 export const api = axios.create({
   baseURL: apiBase,

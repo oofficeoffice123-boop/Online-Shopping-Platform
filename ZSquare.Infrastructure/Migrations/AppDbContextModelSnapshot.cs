@@ -638,6 +638,10 @@ namespace ZSquare.Infrastructure.Migrations
                     b.Property<int>("StockQty")
                         .HasColumnType("int");
 
+            b.Property<decimal?>("DiscountPercent")
+                .HasPrecision(5, 2)
+                .HasColumnType("decimal(5,2)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasPrecision(0)
                         .HasColumnType("datetime2(0)");
@@ -664,6 +668,7 @@ namespace ZSquare.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_ProductVariants_PriceOverride", "[PriceOverride] IS NULL OR [PriceOverride] >= 0");
 
                             t.HasCheckConstraint("CK_ProductVariants_StockQty", "[StockQty] >= 0");
+                            t.HasCheckConstraint("CK_ProductVariants_DiscountPercent", "[DiscountPercent] IS NULL OR ([DiscountPercent] >= 0 AND [DiscountPercent] <= 100)");
                         });
                 });
 

@@ -18,7 +18,7 @@ export default function ProductCard({ product }: { product: Product }) {
         {product.averageRating == null ? '☆☆☆☆☆' : `★ ${product.averageRating.toFixed(1)} · ${product.reviewCount} ${product.reviewCount === 1 ? 'review' : 'reviews'}`}
       </p>
       <div className="browse-card-bottom">
-        <p className="browse-price">{formatPrice(product.price)}</p>
+        {product.discountPercent && product.originalPrice ? <div className="browse-sale-price"><div><s>{formatPrice(product.originalPrice)}</s><strong>{formatPrice(product.price)}</strong></div><span>{product.discountPercent}% OFF</span></div> : <p className="browse-price">{formatPrice(product.price)}</p>}
         <span className="browse-colors" aria-label={`${product.availableColors.length} colors`}>
           {product.availableColors.slice(0, 5).map(color => <i key={color} title={color} style={{ background: colorValue(color) }} />)}
         </span>

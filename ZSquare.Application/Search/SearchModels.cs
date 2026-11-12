@@ -35,6 +35,8 @@ public sealed record ProductCardDto(
     public int Id => ProductId;
     public string CategoryName => Category;
     public string? SecondaryImageUrl { get; init; }
+    public decimal? OriginalPrice { get; init; }
+    public decimal? DiscountPercent { get; init; }
     public IReadOnlyList<string> AvailableColors { get; init; } = [];
     public bool InStock { get; init; }
     public bool LowStock { get; init; }
@@ -50,7 +52,11 @@ public sealed record ProductVariantDto(
     string Color,
     decimal Price,
     bool InStock,
-    bool LowStock);
+    bool LowStock)
+{
+    public decimal? OriginalPrice { get; init; }
+    public decimal? DiscountPercent { get; init; }
+}
 
 public sealed record ProductDetailsDto(
     int Id,
@@ -62,6 +68,8 @@ public sealed record ProductDetailsDto(
     IReadOnlyList<ProductImageDto> Images,
     IReadOnlyList<ProductVariantDto> Variants)
 {
+    public decimal? OriginalPrice { get; init; }
+    public decimal? DiscountPercent { get; init; }
     public decimal? AverageRating { get; init; }
     public int ReviewCount { get; init; }
 }

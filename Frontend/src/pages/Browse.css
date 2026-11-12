@@ -32,6 +32,11 @@
 .browse-product-copy h3 { margin: 0 0 9px; color: #332e29; font: 17px Georgia, serif; line-height: 1.25; }
 .browse-card-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .browse-price { margin: 0; color: #6b5544; font-size: 12px; }
+.browse-sale-price { display: grid; justify-items: start; gap: 6px; }
+.browse-sale-price > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.browse-sale-price s, .detail-sale-price s { color: #a59b92; font-size: 11px; text-decoration-thickness: 1px; }
+.browse-sale-price strong, .detail-sale-price strong { color: #302b26; font-size: 12px; font-weight: 750; }
+.browse-sale-price > span, .detail-sale-price > span { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 999px; background: #ff5036; color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .02em; }
 .browse-colors { display: flex; align-items: center; gap: 4px; }
 .browse-colors i, .browse-option-list i, .detail-color-options i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid #d3ccc3; }
 .low-stock-note { display: block; margin-top: 7px; color: #9a6045; font-size: 10px; }
@@ -88,7 +93,7 @@
 .detail-gallery { display: grid; min-width: 0; grid-template-columns: 60px minmax(0, 1fr); align-items: stretch; gap: 8px; }
 .detail-main-image { position: relative; grid-column: 2; grid-row: 1; width: 100%; min-height: 0; background: #eee9e2; }.detail-main-image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .detail-thumbnails { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; flex-wrap: nowrap; gap: 7px; margin: 0; }.detail-thumbnails button { width: 60px; height: 74px; flex: 0 0 auto; padding: 0; border: 1px solid transparent; background: #eee9e2; cursor: pointer; }.detail-thumbnails button.active { border-color: #76543e; }.detail-thumbnails img { width: 100%; height: 100%; object-fit: cover; }
-.detail-info { padding-top: 20px; }.detail-info .eyebrow { margin: 0 0 13px; }.detail-info h1 { font-size: clamp(36px, 4vw, 54px); }.detail-price { margin: 18px 0 5px; color: #6b5544; font-size: 17px; }.detail-stock { margin: 0; color: #60745f; font-size: 11px; }.detail-description { margin: 22px 0; color: #766c63; font-size: 13px; line-height: 1.7; white-space: pre-line; }
+.detail-info { padding-top: 20px; }.detail-info .eyebrow { margin: 0 0 13px; }.detail-info h1 { font-size: clamp(36px, 4vw, 54px); }.detail-price { margin: 18px 0 5px; color: #6b5544; font-size: 17px; }.detail-sale-price { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0 7px; }.detail-sale-price s { font-size: 14px; }.detail-sale-price strong { font-size: 18px; }.detail-sale-price > span { min-height: 24px; padding: 0 10px; font-size: 10px; }.detail-stock { margin: 0; color: #60745f; font-size: 11px; }.detail-description { margin: 22px 0; color: #766c63; font-size: 13px; line-height: 1.7; white-space: pre-line; }
 .detail-select-group { padding: 0; margin: 25px 0; border: 0; }.detail-select-group legend { margin-bottom: 12px; color: #51483f; font-size: 12px; font-weight: 600; }.detail-select-group legend span { margin-left: 8px; color: #83776c; font-weight: 400; }
 .detail-color-options, .detail-size-options { display: flex; flex-wrap: wrap; gap: 9px; }.detail-color-options button { width: 30px; height: 30px; padding: 4px; border: 1px solid transparent; border-radius: 50%; background: transparent; cursor: pointer; }.detail-color-options button.selected { border-color: #76543e; }.detail-color-options button:disabled { opacity: .35; cursor: not-allowed; }.detail-color-options i { width: 20px; height: 20px; }
 .detail-size-options button { min-width: 43px; height: 39px; padding: 0 9px; border: 1px solid #d8cfc5; background: white; color: #51483f; font-size: 11px; cursor: pointer; }.detail-size-options button.selected { border-color: #76543e; background: #eee7dc; }.detail-size-options button:disabled { color: #aaa19a; text-decoration: line-through; background: #f5f2ef; cursor: not-allowed; }
