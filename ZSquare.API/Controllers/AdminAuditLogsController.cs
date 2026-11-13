@@ -20,6 +20,7 @@ public sealed class AdminAuditLogsController(AppDbContext db) : ControllerBase
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(log => log.Action.Contains(search) || log.EntityType.Contains(search) ||
                                        (log.EntityId != null && log.EntityId.Contains(search)) ||
+                                       (log.DetailsJson != null && log.DetailsJson.Contains(search)) ||
                                        (log.Actor != null && (log.Actor.FullName.Contains(search) || log.Actor.Email.Contains(search))));
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(log => log.CreatedAt).ThenByDescending(log => log.AuditLogId)
@@ -29,7 +30,8 @@ public sealed class AdminAuditLogsController(AppDbContext db) : ControllerBase
                 log.AuditLogId, log.Action, log.EntityType, log.EntityId, log.DetailsJson, log.CreatedAt,
                 ActorUserId = log.ActorUserId,
                 ActorName = log.Actor == null ? "System" : log.Actor.FullName,
-                ActorEmail = log.Actor == null ? null : log.Actor.Email
+                ActorEmail = log.Actor == null ? null : log.Actor.Email,
+                ActorRole = log.Actor == null ? null : log.Actor.Role.Name
             }).ToListAsync(ct);
         return Ok(new { items, page, pageSize, totalCount = total, totalPages = (int)Math.Ceiling(total / (double)pageSize) });
     }

@@ -20,6 +20,7 @@ public sealed class AuthController(
     IWebHostEnvironment environment) : ControllerBase
 {
     private const string RefreshCookieName = "ZSquare.RefreshToken";
+    private const string LegacyRefreshCookieName = "ShopEase.RefreshToken";
 
     [HttpPost("register")]
     [AllowAnonymous]
@@ -132,6 +133,7 @@ public sealed class AuthController(
 
     private void SetRefreshCookie(AuthResponse response)
     {
+        DeleteRefreshCookie(LegacyRefreshCookieName);
         Response.Cookies.Append(RefreshCookieName, response.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
@@ -145,7 +147,13 @@ public sealed class AuthController(
         });
     }
 
-    private void ClearRefreshCookie() => Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+    private void ClearRefreshCookie()
+    {
+        DeleteRefreshCookie(RefreshCookieName);
+        DeleteRefreshCookie(LegacyRefreshCookieName);
+    }
+
+    private void DeleteRefreshCookie(string name) => Response.Cookies.Delete(name, new CookieOptions
     {
         HttpOnly = true,
         Secure = !environment.IsDevelopment() || Request.IsHttps,

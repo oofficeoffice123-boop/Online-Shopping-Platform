@@ -56,6 +56,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCors("React");
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<ActivityAuditMiddleware>();
 app.UseAuthorization();
 app.UseStaticFiles();
 
